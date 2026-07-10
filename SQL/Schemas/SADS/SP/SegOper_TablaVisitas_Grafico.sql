@@ -1,78 +1,213 @@
 CREATE OR ALTER PROCEDURE SADS.SegOper_TablaVisitas_Grafico
 (
-    @anio INT,
-    @mes INT,
-    @agencia INT
+    @fecha DATE,
+    @agencia INT=NULL,
+    @zona INT=NULL,
+    @ruta VARCHAR(10)=NULL,
+    @frecuencia INT
 )
 AS
 BEGIN
     SET NOCOUNT ON;
-        --declaracion de variables reusables en sp
-    DECLARE @hoy DATE;
-    DECLARE @diashabiles INT;
-    DECLARE @diashabiles_transcurridos INT;
 
-    IF @anio = YEAR(GETDATE()) AND @mes = MONTH(GETDATE())
-        SET @hoy = CAST(GETDATE() AS DATE);
+    -------------------------------------------------------
+    -- Declaración de variables
+    -------------------------------------------------------
+
+    DECLARE @Hoy DATE;
+
+    DECLARE @FechaInicioPeriodo DATE;
+    DECLARE @FechaFinPeriodo DATE;
+    DECLARE @FechaCorte DATE;
+
+    DECLARE @DiasHabiles INT;
+    DECLARE @DiasHabilesTranscurridos INT;
+
+    -------------------------------------------------------
+    -- Fecha de corte
+    -------------------------------------------------------
+
+    IF YEAR(@fecha)=YEAR(GETDATE())
+       AND MONTH(@fecha)=MONTH(GETDATE())
+        SET @Hoy = CAST(GETDATE() AS DATE);
     ELSE
-        SET @hoy = EOMONTH(DATEFROMPARTS(@anio, @mes, 1));
-    
-    SELECT
-        @diashabiles = COUNT(*)
-    FROM CATALOGOS.Calendario
-    WHERE
-        Anio = @anio
-        AND Mes = @mes
-        AND Es_Habil = 1;
+        SET @Hoy = EOMONTH(@fecha);
+
+    -------------------------------------------------------
+    -- Determinar periodo
+    -------------------------------------------------------
+
+    IF @frecuencia = 1
+    BEGIN
+
+        SET @FechaInicioPeriodo = @fecha;
+        SET @FechaFinPeriodo    = @fecha;
+        SET @FechaCorte         = @fecha;
+
+    END
+
+    ELSE IF @frecuencia = 2
+    BEGIN
+
+        SET @FechaInicioPeriodo =
+            DATEADD(DAY,1-DATEPART(WEEKDAY,@fecha),@fecha);
+
+        SET @FechaFinPeriodo =
+            DATEADD(DAY,7-DATEPART(WEEKDAY,@fecha),@fecha);
+
+        IF @Hoy < @FechaFinPeriodo
+            SET @FechaCorte = @Hoy;
+        ELSE
+            SET @FechaCorte = @FechaFinPeriodo;
+
+    END
+
+    ELSE IF @frecuencia = 3
+    BEGIN
+
+        SET @FechaInicioPeriodo =
+            DATEFROMPARTS(YEAR(@fecha),MONTH(@fecha),1);
+
+        SET @FechaFinPeriodo =
+            EOMONTH(@fecha);
+
+        IF @Hoy < @FechaFinPeriodo
+            SET @FechaCorte = @Hoy;
+        ELSE
+            SET @FechaCorte = @FechaFinPeriodo;
+
+    END
+
+    -------------------------------------------------------
+    -- Días hábiles
+    -------------------------------------------------------
 
     SELECT
-        @diashabiles_transcurridos = COUNT(*)
+        @DiasHabiles = COUNT(*)
     FROM CATALOGOS.Calendario
-    WHERE
-        Fecha BETWEEN DATEFROMPARTS(@anio, @mes, 1)
-                  AND @hoy
-        AND Es_Habil = 1;
+    WHERE Fecha BETWEEN @FechaInicioPeriodo
+                    AND @FechaFinPeriodo
+      AND Es_Habil = 1;
 
-    --proceso
-    ;WITH Meta AS(
+    -------------------------------------------------------
+    -- Días hábiles transcurridos
+    -------------------------------------------------------
+
+    SELECT
+        @DiasHabilesTranscurridos = COUNT(*)
+    FROM CATALOGOS.Calendario
+    WHERE Fecha BETWEEN @FechaInicioPeriodo
+                    AND @FechaCorte
+      AND Es_Habil = 1;
+
+    -------------------------------------------------------
+    -- Proceso
+    -------------------------------------------------------
+
+    ;WITH Rutas AS
+    (
         SELECT
-            NUR,
-            COALESCE(SUM(A.Obj_Visitas_Mensual), 0) AS Meta_Mensual,
-            COALESCE(A.Obj_Visitas_Diario * @diashabiles_transcurridos, 0) AS Debe_Haber
-        FROM SADS.SegOper_Objetivos_Mensuales AS A
-        LEFT JOIN CATALOGOS.Agencias AS B
-            ON A.NUR LIKE '%' + B.Clave_NUR + '%'
+            A.Agencia,
+            A.CLO,
+            A.Clave_NUR,
+            V.Grupo AS Zona
+        FROM CATALOGOS.Agencias A
+
+        LEFT JOIN CATALOGOS.Vendedores V
+            ON A.Clave_NUR = V.NUR
+
         WHERE
-            YEAR(A.Fecha) = @anio
-            AND MONTH(A.Fecha) = @mes
-            AND (@agencia = 0 OR B.Agencia = @agencia)
-        GROUP BY 
-            A.NUR,
-            A.Obj_Visitas_Diario
+            (@agencia IS NULL OR A.Agencia = @agencia)
+            AND (@zona IS NULL OR V.Grupo = @zona)
+            AND (@ruta IS NULL OR A.Clave_NUR = @ruta)
     ),
 
-    AvanceHoy AS(
-            SELECT
-                A.NUR,
-                COALESCE(SUM(A.Visitas_Con_Compras),0) AS Avance
-            FROM PowerStreet.Seguimiento_Indicadores AS A
-            LEFT JOIN CATALOGOS.Agencias AS B
-                ON A.NUR LIKE '%' + B.Clave_NUR + '%'
-            WHERE
-                A.Fecha BETWEEN DATEFROMPARTS(@anio,@mes,1) AND @hoy
-                AND (@agencia = 0 OR B.Agencia = @agencia)
-            GROUP BY
-                A.NUR
-    ),
-
-    Operacion AS(
+    Meta AS
+    (
         SELECT
-            CEILING(COALESCE(SUM(A.Meta_Mensual),0)) AS Meta_Mensual,
-            CEILING(COALESCE(SUM(A.Debe_Haber),0)) AS Debe_Haber,
+
+            A.NUR,
+
+            CASE
+
+                WHEN @frecuencia = 1 THEN
+                    A.Obj_Visitas_Diario
+
+                WHEN @frecuencia = 2 THEN
+                    A.Obj_Visitas_Diario * @DiasHabiles
+
+                WHEN @frecuencia = 3 THEN
+                    A.Obj_Visitas_Mensual
+
+            END AS Meta
+
+        FROM SADS.SegOper_Objetivos_Mensuales A
+
+        INNER JOIN Rutas R
+            ON A.NUR LIKE '%' + R.Clave_NUR + '%'
+
+        WHERE
+            YEAR(A.Fecha)=YEAR(@fecha)
+            AND MONTH(A.Fecha)=MONTH(@fecha)
+    ),
+
+    AvanceHoy AS
+    (
+        SELECT
+
+            A.NUR,
+
+            COALESCE(SUM(A.Visitas_Con_Compras),0) AS Avance
+
+        FROM PowerStreet.Seguimiento_Indicadores A
+
+        INNER JOIN Rutas R
+            ON A.NUR LIKE '%' + R.Clave_NUR + '%'
+
+        WHERE
+
+            A.Fecha BETWEEN @FechaInicioPeriodo
+                        AND @FechaCorte
+
+        GROUP BY
+
+            A.NUR
+    ),
+
+    Operacion AS
+    (
+        SELECT
+
+            CEILING(COALESCE(SUM(A.Meta),0)) AS Meta,
+
+            CEILING
+            (
+                COALESCE
+                (
+                    SUM
+                    (
+                        A.Meta *
+                        (
+                            @DiasHabilesTranscurridos * 1.0
+                            / @DiasHabiles
+                        )
+                    ),
+                    0
+                )
+            ) AS Debe_Haber,
+
             CEILING(COALESCE(SUM(B.Avance),0)) AS Avance
+
         FROM Meta A
+
         LEFT JOIN AvanceHoy B
             ON A.NUR = B.NUR
     )
-    SELECT*FROM Operacion
-END;
+
+    SELECT
+        Meta,
+        Debe_Haber,
+        Avance
+    FROM Operacion;
+
+END
