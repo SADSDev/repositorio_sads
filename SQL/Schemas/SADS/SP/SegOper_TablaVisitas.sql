@@ -2,7 +2,7 @@ CREATE OR ALTER PROCEDURE SADS.SegOper_TablaVisitas
 (
     @fecha DATE,
     @agencia INT=NULL,
-    @zona INT=NULL,
+    @zona VARCHAR(20)=NULL,
     @ruta VARCHAR(10)=NULL,
     @frecuencia INT
 )
@@ -101,20 +101,31 @@ BEGIN
     -------------------------------------------------------
     ;WITH Rutas AS
     (
-        SELECT
+        SELECT DISTINCT
+            V.NUR,
             A.Agencia,
             A.CLO,
-            A.Clave_NUR,
             V.Grupo AS Zona
-        FROM CATALOGOS.Agencias A
+        FROM CATALOGOS.Rutas_Evaluables V
 
-        LEFT JOIN CATALOGOS.Vendedores V
-            ON A.Clave_NUR = V.NUR
+        INNER JOIN CATALOGOS.Agencias A
+            ON V.NUR LIKE A.Clave_NUR + '%'
 
         WHERE
             (@agencia IS NULL OR A.Agencia = @agencia)
             AND (@zona IS NULL OR V.Grupo = @zona)
-            AND (@ruta IS NULL OR A.Clave_NUR = @ruta)
+            AND
+            (
+                @ruta IS NULL
+                OR CONCAT(
+                        'R',
+                        SUBSTRING(
+                            V.NUR,
+                            CHARINDEX('D', V.NUR) + 1,
+                            LEN(V.NUR)
+                        )
+                    ) = @ruta
+            )
     ),
 
     ObjetivoVisitas AS
@@ -132,7 +143,7 @@ BEGIN
             B.CLO
         FROM SADS.SegOper_Objetivos_Mensuales A
         LEFT JOIN Rutas B
-            ON A.NUR LIKE '%' + B.Clave_NUR + '%'
+            ON A.NUR =B.NUR
         WHERE
             YEAR(A.Fecha)=YEAR(@fecha)
             AND MONTH(A.Fecha)=MONTH(@fecha)
@@ -148,7 +159,7 @@ BEGIN
             MAX(A.Visitas_Programadas) AS Visitas_Programadas
         FROM PowerStreet.Seguimiento_Indicadores A
         LEFT JOIN Rutas B
-            ON A.NUR LIKE '%' + B.Clave_NUR + '%'
+            ON A.NUR = B.NUR
         WHERE
             A.Fecha BETWEEN @FechaInicioPeriodo
                         AND @FechaCorte
