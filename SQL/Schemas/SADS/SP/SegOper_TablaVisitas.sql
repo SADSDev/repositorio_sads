@@ -121,7 +121,7 @@ BEGIN
                         'R',
                         SUBSTRING(
                             V.NUR,
-                            CHARINDEX('D', V.NUR) + 1,
+                            PATINDEX('%[A-Z]%', V.NUR) + 1,
                             LEN(V.NUR)
                         )
                     ) = @ruta

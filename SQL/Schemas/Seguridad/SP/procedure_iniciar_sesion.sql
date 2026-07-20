@@ -60,10 +60,10 @@ BEGIN
     INNER JOIN Seguridad.Roles R
         ON UA.RolId = R.RolId
 
-    INNER JOIN Seguridad.RolPermisos RP
+    LEFT JOIN Seguridad.RolPermisos RP
         ON R.RolId = RP.RolId
 
-    INNER JOIN Seguridad.Permisos P
+    LEFT JOIN Seguridad.Permisos P
         ON RP.PermisoId = P.PermisoId
 
     WHERE

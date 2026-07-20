@@ -6,6 +6,7 @@ CREATE OR ALTER PROCEDURE SADS.SegOper_TablaVisitas_Grafico
     @ruta VARCHAR(10)=NULL,
     @frecuencia INT
 )
+
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -126,7 +127,7 @@ BEGIN
                         'R',
                         SUBSTRING(
                             V.NUR,
-                            CHARINDEX('D', V.NUR) + 1,
+                            PATINDEX('%[A-Z]%', V.NUR) + 1,
                             LEN(V.NUR)
                         )
                     ) = @ruta
@@ -173,7 +174,7 @@ BEGIN
         FROM PowerStreet.Seguimiento_Indicadores A
 
         INNER JOIN Rutas R
-            ON A.NUR LIKE R.NUR
+            ON A.NUR = R.NUR
 
         WHERE
 
