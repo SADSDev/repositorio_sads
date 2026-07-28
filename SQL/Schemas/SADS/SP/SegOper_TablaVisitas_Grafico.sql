@@ -57,7 +57,7 @@ BEGIN
             DATEADD(DAY,7-DATEPART(WEEKDAY,@fecha),@fecha);
 
         IF @Hoy < @FechaFinPeriodo
-            SET @FechaCorte = @Hoy;
+            SET @FechaCorte = @fecha;
         ELSE
             SET @FechaCorte = @FechaFinPeriodo;
 
@@ -73,7 +73,7 @@ BEGIN
             EOMONTH(@fecha);
 
         IF @Hoy < @FechaFinPeriodo
-            SET @FechaCorte = @Hoy;
+            SET @FechaCorte = @fecha;
         ELSE
             SET @FechaCorte = @FechaFinPeriodo;
 

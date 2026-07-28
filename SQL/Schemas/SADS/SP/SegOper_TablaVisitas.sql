@@ -22,6 +22,7 @@ BEGIN
 
     DECLARE @DiasHabiles INT;
     DECLARE @DiasHabilesTranscurridos INT;
+    DECLARE @DiasHabilesRestantes INT;
 
     DECLARE @RolId INT;
 
@@ -57,7 +58,7 @@ BEGIN
              DATEADD(DAY, 6, @FechaInicioPeriodo);
 
         IF @Hoy < @FechaFinPeriodo
-            SET @FechaCorte = @Hoy;
+            SET @FechaCorte = @fecha;
         ELSE
             SET @FechaCorte = @FechaFinPeriodo;
     END
@@ -72,7 +73,7 @@ BEGIN
             EOMONTH(@fecha);
 
         IF @Hoy < @FechaFinPeriodo
-            SET @FechaCorte = @Hoy;
+            SET @FechaCorte = @fecha;
         ELSE
             SET @FechaCorte = @FechaFinPeriodo;
 
@@ -96,6 +97,12 @@ BEGIN
     WHERE Fecha BETWEEN @FechaInicioPeriodo
                     AND @FechaCorte
       AND Es_Habil = 1;
+
+    -------------------------------------------------------
+    --Días hábiles restantes
+    -------------------------------------------------------
+    SET @DiasHabilesRestantes = @DiasHabiles - @DiasHabilesTranscurridos;
+
     -------------------------------------------------------
     -- Proceso
     -------------------------------------------------------
@@ -188,7 +195,7 @@ BEGIN
             CASE
                 WHEN(B.Avance -(A.Meta *(@DiasHabilesTranscurridos * 1.0/ NULLIF(@DiasHabiles,0)))) < 0
                 THEN
-                CAST(ROUND(ABS(B.Avance -(A.Meta *(@DiasHabilesTranscurridos * 1.0/ NULLIF(@DiasHabiles,0))))/ NULLIF(@DiasHabiles,0),2) AS DECIMAL(10,2))
+                ISNULL(CAST(ROUND(ABS(B.Avance -(A.Meta *(@DiasHabilesTranscurridos * 1.0/ NULLIF(@DiasHabiles,0))))/ NULLIF(@DiasHabilesRestantes,0),2) AS DECIMAL(10,2)),0)
                 ELSE 0
             END
             AS Visitas_Adicionales_Por_Dia,

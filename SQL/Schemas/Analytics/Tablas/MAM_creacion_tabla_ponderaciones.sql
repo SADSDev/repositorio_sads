@@ -1,7 +1,7 @@
 CREATE TABLE ANALYTICS.MAM_Ponderaciones
 (
-    mes INT NOT NULL,
-    peso DECIMAL(4,3) NOT NULL
+    Mes INT NOT NULL,
+    Peso DECIMAL(4,3) NOT NULL
 );
 GO
 
