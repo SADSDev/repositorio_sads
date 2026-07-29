@@ -88,16 +88,7 @@ BEGIN
             CAST(SUM(Aperturas_GPS) * 1.0 / NULLIF(SUM(Visitas_Totales), 0) AS DECIMAL(10,4)) AS GPS
         FROM ito_por_dia
     )
-    SELECT
-        V.Indicador,
-        V.Valor
-    FROM resumen R
-    CROSS APPLY (
-        VALUES
-            ('Geocerca', R.Geocerca),
-            ('Apego ITO', R.Apego_ITO),
-            ('GPS', R.GPS)
-    ) V(Indicador, Valor);
+    SELECT*FROM resumen
 
 END;
 GO
