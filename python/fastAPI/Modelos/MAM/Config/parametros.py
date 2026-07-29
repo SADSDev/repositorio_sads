@@ -1,7 +1,7 @@
 #-----------------------------------
 #LIBRERIAS
 #-----------------------------------
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import text
 import pandas as pd
@@ -9,7 +9,8 @@ import pandas as pd
 #----------------------------------------------------
 # IMPORTS
 #----------------------------------------------------
-from Config.conexion_SQL import motor
+from Config.conexion_SQL import obtener_motor
+motor=obtener_motor()
 
 
 #---------------------------------------------------
@@ -41,9 +42,9 @@ def obtener_parametros(anio, mes, agencia):
     df_ponderaciones=obtener_ponderaciones()
     total_meses=df_ponderaciones["Mes"].max()
     
-    hoy=relativedelta(year=anio, month=mes, day=1)
+    hoy=hoy = datetime(anio, mes, 1)
 
-    fecha_inicio = (hoy.replace(day=1) - relativedelta(months=total_meses))
+    fecha_inicio = hoy.replace(day=1) - relativedelta(months=total_meses)
     fecha_fin = hoy.replace(day=1) - timedelta(days=1)
 
     return fecha_inicio,fecha_fin,agencia

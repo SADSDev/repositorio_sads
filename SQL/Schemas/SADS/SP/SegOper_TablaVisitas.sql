@@ -24,7 +24,6 @@ BEGIN
     DECLARE @DiasHabilesTranscurridos INT;
     DECLARE @DiasHabilesRestantes INT;
 
-    DECLARE @RolId INT;
 
     -------------------------------------------------------
     -- Fecha de corte

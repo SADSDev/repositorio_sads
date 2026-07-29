@@ -13,7 +13,7 @@ import pandas as pd
 #-----------------------------------
 from MAM.procesos.procesoDatosMAM import obtener_datos_modelo
 from MAM.Schemas.request import MAMRequest
-
+from Core.redondear import redondear_conservando_total
 
 #-----------------------------------
 # OBTENCION DE DATOS DEL MODELO
@@ -94,30 +94,24 @@ def modeloMAM(request: MAMRequest):
 
     df_modelo_final = (
         df_modelo_final
-        .drop(columns=["peso_vol", "peso_vol_me"])
-    )   
-
-    #-----------------------------------
-    # DEBUG DE EXCEL
-    #-----------------------------------
-    with pd.ExcelWriter(
-        r"D:\Descargas\debug_MAM.xlsx",
-        engine="openpyxl"
-    ) as writer:
-
-        df_modelo_final.to_excel(
-            writer,
-            sheet_name="modelo",
-            index=False
+        .drop(columns=["peso_vol",
+                        "peso_vol_me",
+                        "capacidad_base",
+                        "vol_me_esperado",
+                          ])
+        .assign(
+            meta_vol= lambda x: redondear_conservando_total(
+                x,
+                "meta_vol",
+                request.meta_neta  
+            )
         )
-        
-
-
-    #-----------------------------------
-    # DEBUG DE FORMAS
-    #-----------------------------------
-    print(df_venta.shape)
-    print(df_vigencias_me.shape)
-    print(df_venta_marca_mes_cliente.shape)
+    )   
+    for marca in request.marcas_estrategicas:
+        df_modelo_final[marca.marca] = redondear_conservando_total(
+            df_modelo_final,
+            marca.marca,
+            marca.meta
+        )
 
     return df_modelo_final

@@ -1,0 +1,103 @@
+CREATE OR ALTER PROCEDURE SADS.SegOper_TablaItoResumen
+(
+    @fecha DATE,
+    @agencia INT=NULL,
+    @zona VARCHAR(20)=NULL,
+    @ruta VARCHAR(10)=NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -------------------------------------------------------
+    -- Proceso
+    -------------------------------------------------------
+    ;WITH Rutas AS
+    (
+        SELECT DISTINCT
+            V.NUR,
+            A.Agencia,
+            A.CLO,
+            V.Grupo AS Zona
+        FROM CATALOGOS.Rutas_Evaluables V
+
+        INNER JOIN CATALOGOS.Agencias A
+            ON V.NUR LIKE A.Clave_NUR + '%'
+
+        WHERE
+            V.NUR <> '1125632M29'
+            AND (@agencia IS NULL OR A.Agencia = @agencia)
+            AND (@zona IS NULL OR V.Grupo = @zona)
+            AND
+            (
+                @ruta IS NULL
+                OR CONCAT(
+                        'R',
+                        SUBSTRING(
+                            V.NUR,
+                            PATINDEX('%[A-Z]%', V.NUR) + 1,
+                            LEN(V.NUR)
+                        )
+                    ) = @ruta
+            )
+    ),
+    ito_filtrado AS (
+        SELECT *
+        FROM (
+            SELECT
+                A.*,
+                ROW_NUMBER() OVER (
+                    PARTITION BY
+                        A.NUR,
+                        A.Fecha,
+                        A.Cliente,
+                        A.Apertura
+                    ORDER BY A.Fecha
+                ) AS rn
+            FROM PowerStreet.ITO_Detallado A
+            INNER JOIN rutas R
+                ON A.NUR = R.NUR
+            WHERE A.Vendedor NOT LIKE '%Supervisor%'
+              AND A.Vendedor NOT LIKE '%CENSADOR PENDIENTE DE CONFIGURACION%'
+              AND A.Vendedor NOT LIKE '%VENDEDOR MOSTRADOR%'
+              AND A.Vendedor NOT LIKE '%Ruta Espejo%'
+              AND A.Fecha >= DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+              AND A.Fecha <= @fecha
+        ) X
+        WHERE rn = 1
+    ),
+    
+    ito_por_dia AS (
+        SELECT
+            NUR,
+            Fecha,
+            MAX(Visitas_Totales) AS Visitas_Totales,
+            MAX(Visitas_Geocerca) AS Visitas_Geocerca, 
+            MAX(Visitas_Unicas_ITO) AS Visitas_Ito,
+            SUM(CASE WHEN Apertura = 'GPS' THEN 1 ELSE 0 END) AS Aperturas_GPS
+        FROM ito_filtrado
+        GROUP BY
+            NUR,
+            Fecha
+    ),       
+    
+    resumen AS (
+        SELECT
+            CAST(SUM(Visitas_Geocerca) * 1.0 / NULLIF(SUM(Visitas_Totales), 0) AS DECIMAL(10,4)) AS Geocerca,
+            CAST(SUM(Visitas_Ito) * 1.0 / NULLIF(SUM(Visitas_Totales), 0) AS DECIMAL(10,4)) AS Apego_ITO,
+            CAST(SUM(Aperturas_GPS) * 1.0 / NULLIF(SUM(Visitas_Totales), 0) AS DECIMAL(10,4)) AS GPS
+        FROM ito_por_dia
+    )
+    SELECT
+        V.Indicador,
+        V.Valor
+    FROM resumen R
+    CROSS APPLY (
+        VALUES
+            ('Geocerca', R.Geocerca),
+            ('Apego ITO', R.Apego_ITO),
+            ('GPS', R.GPS)
+    ) V(Indicador, Valor);
+
+END;
+GO

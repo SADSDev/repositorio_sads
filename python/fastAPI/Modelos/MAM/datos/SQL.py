@@ -11,7 +11,8 @@ from datetime import date
 #----------------------------------------------------
 # IMPORTS
 #----------------------------------------------------
-from Config.conexion_SQL import motor
+from Config.conexion_SQL import obtener_motor
+motor=obtener_motor()
 
 #----------------------------------------------------------
 # PROCESO DE OBTENCION DE DF DE VENTAS sin clientes GTP

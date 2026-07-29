@@ -70,4 +70,3 @@ def obtener_motor():
         fast_executemany=True,
         pool_pre_ping=True
     )
-motor=obtener_motor()
