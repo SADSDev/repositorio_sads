@@ -1,12 +1,15 @@
-#------------
+#----------------------------
 #LIBRERIAS
-#-----------
+#-----------------------------
+from functools import wraps
+
 import pyodbc
 from sqlalchemy import create_engine
+from sqlalchemy.exc import InterfaceError, OperationalError
 
 
 #----------------------------
-#imports
+#IMPORTS
 #---------------------------
 from Config.parametros import (
     servidor,
@@ -14,6 +17,29 @@ from Config.parametros import (
     usuario,
     contrasena
 )
+
+from Core.exceptions import ErrorConexionSQL
+
+#------------------------------------------------------------------------
+# MANEJO DE ERRORES DE CONEXIÓN SQL
+#------------------------------------------------------------------------
+def manejar_error_conexion_sql(func):
+    @wraps(func)
+    def envoltura(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+
+        except (
+            OperationalError,
+            InterfaceError,
+            pyodbc.Error
+        ) as exc:
+            raise ErrorConexionSQL(
+                "No fue posible conectar con SQL Server."
+            ) from exc
+
+    return envoltura
+
 
 #-------------------------------
 #funciones para obtener driver del equipo y crear motor de conexion

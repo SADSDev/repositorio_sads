@@ -11,20 +11,25 @@ from datetime import date
 #----------------------------------------------------
 # IMPORTS
 #----------------------------------------------------
-from Config.conexion_SQL import obtener_motor
-motor=obtener_motor()
+from Config.conexion_SQL import (
+    manejar_error_conexion_sql,
+    obtener_motor
+)
+
 
 #----------------------------------------------------------
 # PROCESO DE OBTENCION DE DF DE VENTAS sin clientes GTP
 #--------------------------------------------------------
+@manejar_error_conexion_sql
 def obtener_tabla_ventas(agencia: int, fecha_inicio: date, fecha_fin: date):
+    motor=obtener_motor()
     return pd.read_sql(
         text("""
             WITH rutas AS (
                 SELECT
                     NUR
                 FROM CATALOGOS.Rutas_Evaluables
-                WHERE Agencia = 8
+                WHERE Agencia = :agencia
             ),
 
             articulos AS (
@@ -82,7 +87,9 @@ def obtener_tabla_ventas(agencia: int, fecha_inicio: date, fecha_fin: date):
 #--------------------------------------------------------
 # OBTENCION DE DF DE UNIVERSO DE CLIENTES 
 #--------------------------------------------------------
+@manejar_error_conexion_sql
 def obtener_tabla_ux(agencia:int):
+    motor=obtener_motor()
     return pd.read_sql(
         text("""
             WITH rutas AS (
@@ -114,11 +121,13 @@ def obtener_tabla_ux(agencia:int):
 #-------------------------------------------------------------
 # OBTENER VIGENCIAS DE ME
 #-------------------------------------------------------------
+@manejar_error_conexion_sql
 def obtener_vigencias_me(
     agencia: int,
     fecha_inicio: date,
     fecha_fin: date
 ):
+    motor=obtener_motor()
     return pd.read_sql(
         text("""
             WITH Vigencias AS

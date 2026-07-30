@@ -1,18 +1,19 @@
 # Obtiene los datos, parámetros e indicadores requeridos para calcular
 # la capacidad base y el volumen esperado de marcas estratégicas.
 
-#-----------------------------------
+#-------------------------------------------------
 # LIBRERIAS
-#-----------------------------------
-from datetime import date, timedelta
+#-------------------------------------------------
+import logging
+logger = logging.getLogger("uvicorn.error")
 
 import pandas as pd
-from dateutil.relativedelta import relativedelta
 
-
-#-----------------------------------
+#---------------------------------------------
 # IMPORTS
-#-----------------------------------
+#---------------------------------------------
+from Core.validarDataFrame import validar_dataframe
+
 from MAM.Config.parametros import (
     obtener_ponderaciones,
     obtener_parametros_ajustables,
@@ -53,10 +54,9 @@ from MAM.procesos.volumenEsperado import volumen_esperado
 from MAM.procesos.capacidadBase import capacidad_base
 from MAM.procesos.volumenMEEsperado import volumen_me_esperado
 
-
-#-----------------------------------
+#-----------------------------------------------------
 # PROCESO DE DATOS DEL MODELO
-#-----------------------------------
+#-----------------------------------------------------
 # procesoDatosMAM.py
 def obtener_datos_modelo(anio: int, mes: int, agencia: int):
 
@@ -71,23 +71,26 @@ def obtener_datos_modelo(anio: int, mes: int, agencia: int):
         agencia
     )   
 
-    print("obteniendo ventas")
+    logger.info("MAM | obteniendo ventas | agencia=%s",agencia)
     df_venta = obtener_tabla_ventas(
         agencia=agencia,
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin
     )
+    validar_dataframe(df_venta, "df_venta")
     df_venta["Fecha"] = pd.to_datetime(df_venta["Fecha"])
 
-    print("obteniendo universo de clientes")
+    logger.info("MAM | obteniendo universo de clientes | agencia=%s",agencia)
     df_ux = obtener_tabla_ux(agencia=agencia)
+    validar_dataframe(df_ux, "df_ux")
 
-    print("obteniendo marcas estrategicas")
+    logger.info("MAM | obteniendo marcas estratégicas | agencia=%s",agencia)
     df_vigencias_me = obtener_vigencias_me(
         agencia=agencia,
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin
     )
+    validar_dataframe(df_vigencias_me, "df_vigencias_me")
 
     #-----------------------------------
     # OBTENCION DE PARAMETROS
@@ -211,6 +214,7 @@ def obtener_datos_modelo(anio: int, mes: int, agencia: int):
     #-----------------------------------
     # RESULTADOS
     #-----------------------------------
+    logger.info("Datos obtenidos con éxito")
     return {
         "df_venta": df_venta,
         "df_vigencias_me": df_vigencias_me,
