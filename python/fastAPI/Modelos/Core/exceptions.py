@@ -32,6 +32,8 @@ class ErrorDatosModelo(Exception):
 #--------------------------------------------------
 # HANDLERS
 #---------------------------------------------------
+
+#error de conexion sql
 async def error_conexion_sql(
     request: Request,
     exc: ErrorConexionSQL

@@ -7,9 +7,13 @@ from fastapi import FastAPI
 #------------------------------------------------------------------------
 # IMPORTS
 #------------------------------------------------------------------------
-from Core.exceptions import registrar_manejadores
-from MAM.routes import router as mam_router
 
+#excepciones
+from Core.exceptions import registrar_manejadores
+
+#modelos
+from MAM.routes import router as mam_router
+from MART.routes import router as mart_router
 
 #------------------------------------------------------------------------
 # APLICACIÓN
@@ -25,6 +29,7 @@ app = FastAPI(
 registrar_manejadores(app)
 
 app.include_router(mam_router)
+app.include_router(mart_router) 
 
 
 #------------------------------------------------------------------------

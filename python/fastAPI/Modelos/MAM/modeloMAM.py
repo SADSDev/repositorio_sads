@@ -79,7 +79,7 @@ def modeloMAM(request: MAMRequest):
     #-----------------------------------
     
 
-    df_modelo_final = (
+    df_mam = (
         df_pesos
         .assign(
             meta_vol=lambda x:
@@ -114,4 +114,4 @@ def modeloMAM(request: MAMRequest):
             marca.meta
         )
 
-    return df_modelo_final
+    return df_mam

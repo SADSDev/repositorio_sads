@@ -43,14 +43,15 @@ BEGIN
         U.NombreCompleto AS Nombre,
         UA.AplicacionId,
 
-        R.RolId,
         R.Rol,
+        R.RolId,
 
         UA.Agencia,
         UA.Grupo,
         UA.Ruta,
+        
+        UP.PermisoId,
 
-        P.PermisoId,
         P.Permiso
     FROM Seguridad.Usuarios U
 
@@ -60,11 +61,11 @@ BEGIN
     INNER JOIN Seguridad.Roles R
         ON UA.RolId = R.RolId
 
-    LEFT JOIN Seguridad.RolPermisos RP
-        ON R.RolId = RP.RolId
+    LEFT JOIN Seguridad.UsuarioPermisos UP
+        ON UA.UsuarioAplicacionId = UP.UsuarioAplicacionId
 
     LEFT JOIN Seguridad.Permisos P
-        ON RP.PermisoId = P.PermisoId
+        ON UP.PermisoId = P.PermisoId
 
     WHERE
         U.Id = @UsuarioId

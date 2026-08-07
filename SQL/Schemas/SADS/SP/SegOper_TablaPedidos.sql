@@ -70,7 +70,7 @@ BEGIN
             NUR,
             Agencia,
             COUNT(Orden) AS Asignados,
-            SUM(CASE WHEN Status_Entrega = 'ENTREGADO' THEN 1 ELSE 0 END) AS Entregados,
+            SUM(CASE WHEN Cantidad_Orden >= Cantidad_Entrega THEN 1 ELSE 0 END) AS Entregados,
             SUM(CASE WHEN Cantidad_Entrega < Cantidad_Orden THEN 1 ELSE 0 END) AS Incompletos,
             SUM(CASE WHEN Status_Entrega = 'PENDIENTE' THEN 1 ELSE 0 END) AS Pendientes,
             SUM(CASE WHEN Status_Entrega = 'RECHAZADO' THEN 1 ELSE 0 END) AS Rechazados,
