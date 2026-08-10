@@ -23,7 +23,7 @@ from MART.Config.parametros import (
 )
 
 from MART.datos.SQL import (
-    obtener_tabla_ventas,
+    obtener_esfuerzo_historico,
     obtener_calendario
 )
 
@@ -54,39 +54,26 @@ def obtener_datos_modelo(
     df_ponderaciones = obtener_ponderaciones()
     validar_dataframe(df_ponderaciones, "df_ponderaciones")
 
-    fecha_inicio, fecha_fin, agencia = obtener_parametros(
+    fecha_inicio, fecha_fin= obtener_parametros(
         anio,
-        mes,
-        agencia
+        mes
     )
 
     logger.info(
-        "MART | obteniendo ventas | agencia=%s",
+        "MART | obteniendo historial de esfuerzo | agencia=%s",
         agencia
     )
 
-    df_venta = obtener_tabla_ventas(
+    df_esfuerzo_historico = obtener_esfuerzo_historico(
         agencia=agencia,
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin
     )
 
-    validar_dataframe(df_venta, "df_venta")
+    validar_dataframe(df_esfuerzo_historico, "df_venta")
 
-    df_venta["Fecha"] = pd.to_datetime(
-        df_venta["Fecha"]
-    )
-
-    # -------------------------------------------------
-    # CALCULO DEL ESFUERZO HISTORICO
-    # -------------------------------------------------
-    df_esfuerzo_historico = esfuerzo_historico(
-        df_venta
-    )
-
-    validar_dataframe(
-        df_esfuerzo_historico,
-        "df_esfuerzo_historico"
+    df_esfuerzo_historico["Fecha"] = pd.to_datetime(
+        df_esfuerzo_historico["Fecha"]
     )
 
     # -------------------------------------------------
@@ -186,7 +173,6 @@ def obtener_datos_modelo(
 
     return {
         "df_ponderaciones": df_ponderaciones,
-        "df_venta": df_venta,
         "df_esfuerzo_historico": df_esfuerzo_historico,
         "df_n": df_n,
         "df_prom_pond_diames_diasem": df_prom_pond_diames_diasem,

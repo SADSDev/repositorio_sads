@@ -68,7 +68,11 @@ def normalizacion_promedios(df_calendario_rutas: pd.DataFrame,
             x.groupby("NUR")["Prom_Suavizado"]
              .transform("sum")
     )
-    [["Fecha","NUR","Dia_Mes", "Dia_Semana","Peso"]]
+    .sort_values(
+        ["NUR","Fecha"],
+        ascending=[True, True]
+    )
+    [["Fecha","NUR","Peso"]]
 )
 
     return df_mart

@@ -34,7 +34,7 @@ def obtener_ponderaciones():
 
 
 #fecha de inicio de consulta y fin de consulta
-def obtener_parametros(anio, mes, agencia):
+def obtener_parametros(anio, mes):
     df_ponderaciones=obtener_ponderaciones()
     total_meses=df_ponderaciones["Mes"].max()
     
@@ -43,7 +43,7 @@ def obtener_parametros(anio, mes, agencia):
     fecha_inicio = hoy.replace(day=1) - relativedelta(months=total_meses)
     fecha_fin = hoy.replace(day=1) - timedelta(days=1)
 
-    return fecha_inicio,fecha_fin,agencia
+    return fecha_inicio,fecha_fin
 
 #parametros para el suavizado de jerarquizacion
 parametro_c=5

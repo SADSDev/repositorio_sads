@@ -24,7 +24,7 @@ from Config.conexion_SQL import (
 # PROCESO DE OBTENCION DE DF DE VENTAS sin clientes GTP
 #--------------------------------------------------------
 @manejar_error_conexion_sql
-def obtener_tabla_ventas(agencia: int, fecha_inicio: date, fecha_fin: date):
+def obtener_esfuerzo_historico(agencia: int, fecha_inicio: date, fecha_fin: date):
     motor=obtener_motor()
     return pd.read_sql(
         text("""
@@ -60,11 +60,13 @@ def obtener_tabla_ventas(agencia: int, fecha_inicio: date, fecha_fin: date):
                 LEFT JOIN articulos C
                     ON A.Codigo_Articulo = C.Codigo
                 INNER JOIN rutas R
-                    ON A.NUR=R.NUR
+                    ON A.NUR = R.NUR
                 WHERE Fecha BETWEEN :fecha_inicio AND :fecha_fin
                 AND A.NUR <> '1125632M29'
-            )   
-            SELECT
+            ),
+
+            venta_diaria AS (
+                SELECT
                     Fecha,
                     DATEFROMPARTS(
                         YEAR(Fecha),
@@ -72,12 +74,35 @@ def obtener_tabla_ventas(agencia: int, fecha_inicio: date, fecha_fin: date):
                         1
                     ) AS Mes,
                     NUR,
-                    Cliente,
-                    Familia,
-                    Cantidad
-            FROM ventas_sin_gtp
-            WHERE existe_en_B=0
-            ORDER BY Fecha DESC, NUR ASC
+                    SUM(Cantidad) AS Cantidad_Diaria
+                FROM ventas_sin_gtp
+                WHERE existe_en_B = 0
+                GROUP BY
+                    Fecha,
+                    DATEFROMPARTS(
+                        YEAR(Fecha),
+                        MONTH(Fecha),
+                        1
+                    ),
+                    NUR
+            )
+
+            SELECT
+                Fecha,
+                Mes,
+                NUR,
+                Cantidad_Diaria,
+                SUM(Cantidad_Diaria) OVER (
+                    PARTITION BY NUR, Mes
+                ) AS Cantidad_Mensual,
+                CAST(Cantidad_Diaria AS FLOAT) /
+                SUM(Cantidad_Diaria) OVER (
+                    PARTITION BY NUR, Mes
+                ) AS Esfuerzo
+            FROM venta_diaria
+            ORDER BY
+                Fecha DESC,
+                NUR ASC;
         """),
         motor,
         params={
