@@ -1,17 +1,57 @@
 CREATE OR ALTER PROCEDURE SADS.SegOper_TablaItoResumen
 (
     @fecha DATE,
-    @agencia INT=NULL,
-    @zona VARCHAR(20)=NULL,
-    @ruta VARCHAR(10)=NULL
+    @agencia INT = NULL,
+    @zona VARCHAR(20) = NULL,
+    @ruta VARCHAR(10) = NULL,
+    @frecuencia INT
 )
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+
+    -------------------------------------------------------
+    -- Declaración de variables
+    -------------------------------------------------------
+
+    DECLARE @FechaInicioPeriodo DATE;
+
+    -------------------------------------------------------
+    -- Definir inicio del periodo según frecuencia
+    -------------------------------------------------------
+
+    IF @frecuencia = 1
+    BEGIN
+        -- Diario: solamente la fecha consultada
+        SET @FechaInicioPeriodo = @fecha;
+    END
+
+    ELSE IF @frecuencia = 2
+    BEGIN
+        -- Semanal: lunes de la semana de @fecha
+        SET @FechaInicioPeriodo =
+            DATEADD(
+                DAY,
+                -((DATEDIFF(DAY, '19000101', @fecha)) % 7),
+                @fecha
+            );
+    END
+
+    ELSE IF @frecuencia = 3
+    BEGIN
+        -- Mensual: primer día del mes de @fecha
+        SET @FechaInicioPeriodo =
+            DATEFROMPARTS(
+                YEAR(@fecha),
+                MONTH(@fecha),
+                1
+            );
+    END;
+
     -------------------------------------------------------
     -- Proceso
     -------------------------------------------------------
+
     ;WITH Rutas AS
     (
         SELECT DISTINCT
@@ -41,12 +81,16 @@ BEGIN
                     ) = @ruta
             )
     ),
-    ito_filtrado AS (
+
+    ito_filtrado AS
+    (
         SELECT *
-        FROM (
+        FROM
+        (
             SELECT
                 A.*,
-                ROW_NUMBER() OVER (
+                ROW_NUMBER() OVER
+                (
                     PARTITION BY
                         A.NUR,
                         A.Fecha,
@@ -55,40 +99,68 @@ BEGIN
                     ORDER BY A.Fecha
                 ) AS rn
             FROM PowerStreet.ITO_Detallado A
-            INNER JOIN rutas R
+
+            INNER JOIN Rutas R
                 ON A.NUR = R.NUR
-            WHERE A.Vendedor NOT LIKE '%Supervisor%'
-              AND A.Vendedor NOT LIKE '%CENSADOR PENDIENTE DE CONFIGURACION%'
-              AND A.Vendedor NOT LIKE '%VENDEDOR MOSTRADOR%'
-              AND A.Vendedor NOT LIKE '%Ruta Espejo%'
-              AND A.Fecha >= DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
-              AND A.Fecha <= @fecha
+
+            WHERE
+                A.Vendedor NOT LIKE '%Supervisor%'
+                AND A.Vendedor NOT LIKE '%CENSADOR PENDIENTE DE CONFIGURACION%'
+                AND A.Vendedor NOT LIKE '%VENDEDOR MOSTRADOR%'
+                AND A.Vendedor NOT LIKE '%Ruta Espejo%'
+                AND A.Fecha >= @FechaInicioPeriodo
+                AND A.Fecha <= @fecha
         ) X
         WHERE rn = 1
     ),
-    
-    ito_por_dia AS (
+
+    ito_por_dia AS
+    (
         SELECT
             NUR,
             Fecha,
             MAX(Visitas_Totales) AS Visitas_Totales,
-            MAX(Visitas_Geocerca) AS Visitas_Geocerca, 
+            MAX(Visitas_Geocerca) AS Visitas_Geocerca,
             MAX(Visitas_Unicas_ITO) AS Visitas_Ito,
-            SUM(CASE WHEN Apertura = 'GPS' THEN 1 ELSE 0 END) AS Aperturas_GPS
+            SUM(
+                CASE
+                    WHEN Apertura = 'GPS'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS Aperturas_GPS
         FROM ito_filtrado
         GROUP BY
             NUR,
             Fecha
-    ),       
-    
-    resumen AS (
+    ),
+
+    resumen AS
+    (
         SELECT
-            CAST(SUM(Visitas_Geocerca) * 1.0 / NULLIF(SUM(Visitas_Totales), 0) AS DECIMAL(10,4)) AS Geocerca,
-            CAST(SUM(Visitas_Ito) * 1.0 / NULLIF(SUM(Visitas_Totales), 0) AS DECIMAL(10,4)) AS Apego_ITO,
-            CAST(SUM(Aperturas_GPS) * 1.0 / NULLIF(SUM(Visitas_Totales), 0) AS DECIMAL(10,4)) AS GPS
+            CAST(
+                SUM(Visitas_Geocerca) * 1.0
+                / NULLIF(SUM(Visitas_Totales), 0)
+                AS DECIMAL(10,4)
+            ) AS Geocerca,
+
+            CAST(
+                SUM(Visitas_Ito) * 1.0
+                / NULLIF(SUM(Visitas_Totales), 0)
+                AS DECIMAL(10,4)
+            ) AS Apego_ITO,
+
+            CAST(
+                SUM(Aperturas_GPS) * 1.0
+                / NULLIF(SUM(Visitas_Totales), 0)
+                AS DECIMAL(10,4)
+            ) AS GPS
+
         FROM ito_por_dia
     )
-    SELECT*FROM resumen
+
+    SELECT *
+    FROM resumen;
 
 END;
 GO

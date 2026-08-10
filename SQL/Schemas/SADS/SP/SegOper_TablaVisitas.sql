@@ -5,7 +5,7 @@ CREATE OR ALTER PROCEDURE SADS.SegOper_TablaVisitas
     @zona VARCHAR(20)=NULL,
     @ruta VARCHAR(10)=NULL,
     @frecuencia INT
-)
+)   
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -137,23 +137,22 @@ BEGIN
     ObjetivoVisitas AS
     (
         SELECT
-            A.NUR,
-            CASE
-                WHEN @frecuencia = 1 THEN
-                    A.Obj_Visitas_Diario
-                WHEN @frecuencia = 2 THEN
-                    A.Obj_Visitas_Diario * @DiasHabiles
-                WHEN @frecuencia = 3 THEN
-                    A.Obj_Visitas_Mensual
-            END AS Meta,
-            B.CLO
-        FROM SADS.SegOper_Objetivos_Mensuales A
-        LEFT JOIN Rutas B
-            ON A.NUR =B.NUR
+            M.NUR,
+            SUM(M.Valor_Meta) AS Meta,
+            R.CLO
+        FROM SADS.SegOper_Metas M
+
+        INNER JOIN Rutas R
+            ON M.NUR = R.NUR
+
         WHERE
-            YEAR(A.Fecha)=YEAR(@fecha)
-            AND MONTH(A.Fecha)=MONTH(@fecha)
-            AND (@agencia IS NULL OR B.Agencia=@agencia)
+            M.Indicador = 'VISITAS EFECTIVAS'
+            AND M.Fecha BETWEEN @FechaInicioPeriodo
+                            AND @FechaFinPeriodo
+
+        GROUP BY
+            M.NUR,
+            R.CLO
     ),
 
     -------------------------------------------------------
@@ -185,7 +184,7 @@ BEGIN
             CAST(ROUND(B.Avance / NULLIF(A.Meta,0),4)
             AS DECIMAL(10,4))
             AS Cobertura_Meta,
-            CAST(ROUND(A.Meta *(@DiasHabilesTranscurridos * 1.0/ NULLIF(@DiasHabiles,0)),2)
+            CAST(CEILING(A.Meta *(@DiasHabilesTranscurridos * 1.0/ NULLIF(@DiasHabiles,0)))
             AS DECIMAL(10,2))
             AS Objetivo_Al_Dia,
             CAST(ROUND(B.Avance -(A.Meta *(@DiasHabilesTranscurridos * 1.0/ NULLIF(@DiasHabiles,0))),2)

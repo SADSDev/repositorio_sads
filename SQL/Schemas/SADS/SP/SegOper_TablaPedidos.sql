@@ -1,17 +1,57 @@
 CREATE OR ALTER PROCEDURE SADS.SegOper_TablaPedidos
 (
     @fecha DATE,
-    @agencia INT=NULL,
-    @zona VARCHAR(20)=NULL,
-    @ruta VARCHAR(10)=NULL
+    @agencia INT = NULL,
+    @zona VARCHAR(20) = NULL,
+    @ruta VARCHAR(10) = NULL,
+    @frecuencia INT
 )
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+
+    -------------------------------------------------------
+    -- Declaración de variables
+    -------------------------------------------------------
+
+    DECLARE @FechaInicioPeriodo DATE;
+
+    -------------------------------------------------------
+    -- Definir inicio del periodo según frecuencia
+    -------------------------------------------------------
+
+    IF @frecuencia = 1
+    BEGIN
+        -- Diario: solamente la fecha consultada
+        SET @FechaInicioPeriodo = @fecha;
+    END
+
+    ELSE IF @frecuencia = 2
+    BEGIN
+        -- Semanal: lunes de la semana de @fecha
+        SET @FechaInicioPeriodo =
+            DATEADD(
+                DAY,
+                -((DATEDIFF(DAY, '19000101', @fecha)) % 7),
+                @fecha
+            );
+    END
+
+    ELSE IF @frecuencia = 3
+    BEGIN
+        -- Mensual: primer día del mes de @fecha
+        SET @FechaInicioPeriodo =
+            DATEFROMPARTS(
+                YEAR(@fecha),
+                MONTH(@fecha),
+                1
+            );
+    END;
+
     -------------------------------------------------------
     -- Proceso
     -------------------------------------------------------
+
     ;WITH Rutas AS
     (
         SELECT DISTINCT
@@ -41,7 +81,7 @@ BEGIN
                     ) = @ruta
             )
     ),
-    
+
     pedidos_filtrado AS
     (
         SELECT *
@@ -58,29 +98,65 @@ BEGIN
             FROM PowerStreet.Fullfillment_Pedidos_PMM A
             INNER JOIN Rutas R
                 ON A.NUR = R.NUR
-            WHERE A.Fecha >= DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
-              AND A.Fecha <= @fecha
+            WHERE
+                A.Fecha >= @FechaInicioPeriodo
+                AND A.Fecha <= @fecha
         ) X
         WHERE rn = 1
-    ),  
-    
+    ),
+
     tabla_pedidos AS
     (
         SELECT
             NUR,
             Agencia,
             COUNT(Orden) AS Asignados,
-            SUM(CASE WHEN Cantidad_Orden >= Cantidad_Entrega THEN 1 ELSE 0 END) AS Entregados,
-            SUM(CASE WHEN Cantidad_Entrega < Cantidad_Orden THEN 1 ELSE 0 END) AS Incompletos,
-            SUM(CASE WHEN Status_Entrega = 'PENDIENTE' THEN 1 ELSE 0 END) AS Pendientes,
-            SUM(CASE WHEN Status_Entrega = 'RECHAZADO' THEN 1 ELSE 0 END) AS Rechazados,
-            CAST(AVG(Fillrate) / 100.0 AS DECIMAL(10,4)) AS Fillrate,
-            CAST(AVG(Fullfillment) / 100.0 AS DECIMAL(10,4)) AS Fullfillment
+            SUM(
+                CASE
+                    WHEN Cantidad_Orden >= Cantidad_Entrega
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS Entregados,
+            SUM(
+                CASE
+                    WHEN Cantidad_Entrega < Cantidad_Orden
+                    AND Cantidad_Entrega>0
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS Incompletos,
+            SUM(
+                CASE
+                    WHEN Status_Entrega = 'PENDIENTE'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS Pendientes,
+            SUM(
+                CASE
+                    WHEN Status_Entrega = 'RECHAZADO'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS Rechazados,
+            CAST(
+                AVG(Fillrate) / 100.0
+                AS DECIMAL(10,4)
+            ) AS Fillrate,
+            CAST(
+                AVG(Fullfillment) / 100.0
+                AS DECIMAL(10,4)
+            ) AS Fullfillment
         FROM pedidos_filtrado
-        GROUP BY NUR, Agencia
+        GROUP BY
+            NUR,
+            Agencia
     )
-    SELECT*FROM tabla_pedidos
-    ORDER BY NUR ASC
+
+    SELECT *
+    FROM tabla_pedidos
+    ORDER BY NUR ASC;
 
 END;
 GO

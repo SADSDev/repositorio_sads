@@ -137,30 +137,20 @@ BEGIN
     Meta AS
     (
         SELECT
-
-            A.NUR,
-
-            CASE
-
-                WHEN @frecuencia = 1 THEN
-                    A.Obj_Visitas_Diario
-
-                WHEN @frecuencia = 2 THEN
-                    A.Obj_Visitas_Diario * @DiasHabiles
-
-                WHEN @frecuencia = 3 THEN
-                    A.Obj_Visitas_Mensual
-
-            END AS Meta
-
-        FROM SADS.SegOper_Objetivos_Mensuales A
+            M.NUR,
+            SUM(M.Valor_Meta) AS Meta
+        FROM SADS.SegOper_Metas M
 
         INNER JOIN Rutas R
-            ON A.NUR = R.NUR
+            ON M.NUR = R.NUR
 
         WHERE
-            YEAR(A.Fecha)=YEAR(@fecha)
-            AND MONTH(A.Fecha)=MONTH(@fecha)
+            M.Indicador = 'VISITAS EFECTIVAS'
+            AND M.Fecha BETWEEN @FechaInicioPeriodo
+                            AND @FechaFinPeriodo
+
+        GROUP BY
+            M.NUR
     ),
 
     AvanceHoy AS
@@ -186,34 +176,39 @@ BEGIN
             A.NUR
     ),
 
+    Meta_Al_Dia AS
+    (
+        SELECT
+            M.NUR,
+            SUM(M.Valor_Meta) AS Debe_Haber
+        FROM SADS.SegOper_Metas M
+
+        INNER JOIN Rutas R
+            ON M.NUR = R.NUR
+
+        WHERE
+            M.Indicador = 'VISITAS EFECTIVAS'
+            AND M.Fecha BETWEEN @FechaInicioPeriodo
+                            AND @FechaCorte
+
+        GROUP BY
+            M.NUR
+    ),
+
     Operacion AS
     (
         SELECT
+            CEILING(SUM(M.Meta)) AS Meta,
+            CEILING(SUM(D.Debe_Haber)) AS Debe_Haber,
+            CEILING(SUM(A.Avance)) AS Avance
 
-            CEILING(COALESCE(SUM(A.Meta),0)) AS Meta,
+        FROM Meta M
 
-            CEILING
-            (
-                COALESCE
-                (
-                    SUM
-                    (
-                        A.Meta *
-                        (
-                            @DiasHabilesTranscurridos * 1.0
-                            / @DiasHabiles
-                        )
-                    ),
-                    0
-                )
-            ) AS Debe_Haber,
+        LEFT JOIN Meta_Al_Dia D
+            ON M.NUR = D.NUR
 
-            CEILING(COALESCE(SUM(B.Avance),0)) AS Avance
-
-        FROM Meta A
-
-        LEFT JOIN AvanceHoy B
-            ON A.NUR = B.NUR
+        LEFT JOIN AvanceHoy A
+            ON M.NUR = A.NUR
     )
 
     SELECT
