@@ -23,9 +23,10 @@ BEGIN
     SELECT
         @Dias_Operativos = COUNT(*)
     FROM CATALOGOS.Calendario
-    WHERE Anio = YEAR(@Mes_Meta)
-      AND Mes = MONTH(@Mes_Meta)
-      AND Es_Habil = 1;
+    WHERE
+        Anio = YEAR(@Mes_Meta)
+        AND Mes = MONTH(@Mes_Meta)
+        AND Es_Habil = 1;
 
     -----------------------------------------------------
     -- Limpiar metas existentes
@@ -37,11 +38,12 @@ BEGIN
 
     DELETE M
     FROM SADS.SegOper_Metas M
-    WHERE YEAR(M.Fecha)=YEAR(@Mes_Meta)
-      AND MONTH(M.Fecha)=MONTH(@Mes_Meta);
+    WHERE
+        YEAR(M.Fecha) = YEAR(@Mes_Meta)
+        AND MONTH(M.Fecha) = MONTH(@Mes_Meta);
 
     -----------------------------------------------------
-    -- Metas mensuales
+    -- Metas e indicadores mensuales
     -----------------------------------------------------
 
     INSERT INTO SADS.SegOper_Metas_Mensuales
@@ -79,9 +81,9 @@ BEGIN
         O.Indicador,
 
         CASE
-            WHEN O.Indicador='VISITAS EFECTIVAS'
-                THEN ROUND(O.Valor_Objetivo/@Dias_Operativos,3)
-
+            WHEN O.Indicador = 'VISITAS EFECTIVAS'
+                THEN ROUND(O.Valor_Objetivo / @Dias_Operativos, 3)
+        
             ELSE
                 O.Valor_Objetivo
         END
@@ -90,9 +92,14 @@ BEGIN
 
     CROSS JOIN CATALOGOS.Calendario C
 
-    WHERE C.Anio = YEAR(@Mes_Meta)
-      AND C.Mes = MONTH(@Mes_Meta)
-      AND C.Es_Habil = 1;
+    WHERE
+        C.Anio = YEAR(@Mes_Meta)
+        AND C.Mes = MONTH(@Mes_Meta)
+        AND C.Es_Habil = 1
+
+        -- Categorías 3 y 4 son indicadores,
+        -- no metas operativas diarias
+        AND O.CategoriaId NOT IN (3,4);
 
 END;
 GO
