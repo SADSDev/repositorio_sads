@@ -28,13 +28,21 @@ BEGIN
 
     ELSE IF @frecuencia = 2
     BEGIN
-        -- Semanal: lunes de la semana de @fecha
         SET @FechaInicioPeriodo =
-            DATEADD(
-                DAY,
-                -((DATEDIFF(DAY, '19000101', @fecha)) % 7),
-                @fecha
-            );
+            CASE
+                WHEN DATEADD(
+                        DAY,
+                        -((DATEDIFF(DAY, '19000101', @fecha)) % 7),
+                        @fecha
+                    ) < DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+                THEN DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+
+                ELSE DATEADD(
+                        DAY,
+                        -((DATEDIFF(DAY, '19000101', @fecha)) % 7),
+                        @fecha
+                    )
+            END;
     END
 
     ELSE IF @frecuencia = 3
@@ -114,7 +122,7 @@ BEGIN
 
             SUM(
                 CASE
-                    WHEN Cantidad_Orden >= Cantidad_Entrega
+                    WHEN Cantidad_Entrega >= Cantidad_Orden
                     THEN 1
                     ELSE 0
                 END
