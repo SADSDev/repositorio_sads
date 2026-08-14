@@ -21,7 +21,6 @@ BEGIN
     DECLARE @columnas_meta NVARCHAR(MAX);
     DECLARE @columnas_avance NVARCHAR(MAX);
     DECLARE @columnas_objetivo NVARCHAR(MAX);
-    DECLARE @columnas_alcance NVARCHAR(MAX);
     DECLARE @columnas NVARCHAR(MAX);
 
     SET @fecha_inicio =
@@ -153,53 +152,19 @@ BEGIN
                     QUOTENAME('ObjAlDia ' + I.Indicador)
                 ),
                 ','
-            ) WITHIN GROUP (ORDER BY I.Indicador),
-
-        @columnas_alcance =
-            STRING_AGG(
-                CONVERT(
-                    NVARCHAR(MAX),
-                    'CAST(
-                        ROUND(
-                            SUM(CASE
-                                WHEN D.Indicador = N''' +
-                    REPLACE(I.Indicador, '''', '''''') +
-                    '''
-                                THEN D.Avance
-                                ELSE 0
-                            END)
-                            /
-                            NULLIF(
-                                SUM(CASE
-                                    WHEN D.Indicador = N''' +
-                    REPLACE(I.Indicador, '''', '''''') +
-                    '''
-                                    THEN D.MetaPeriodo
-                                    ELSE 0
-                                END),
-                                0
-                            ),
-                            4
-                        )
-                        AS DECIMAL(10,4)
-                    ) AS ' +
-                    QUOTENAME('Alcance ' + I.Indicador)
-                ),
-                ','
             ) WITHIN GROUP (ORDER BY I.Indicador)
     FROM #Indicadores I;
 
     SET @columnas =
         @columnas_meta + ',' +
         @columnas_avance + ',' +
-        @columnas_objetivo + ',' +
-        @columnas_alcance;
+        @columnas_objetivo;
+
 
     SET @columnas =
         @columnas_meta + ',' +
         @columnas_avance + ',' +
-        @columnas_objetivo + ',' +
-        @columnas_alcance;
+        @columnas_objetivo;
 
         SET @sql = N'
         ;WITH Rutas AS
@@ -265,30 +230,38 @@ BEGIN
                 LTRIM(RTRIM(M.Indicador))
         ),
 
+        RutasConMeta AS
+        (
+            SELECT DISTINCT
+                M.NUR,
+                R.CLO
+            FROM Metas M
+            INNER JOIN Rutas R
+                ON R.NUR = M.NUR
+        ),
+
         Ventas AS
         (
             SELECT
-                VD.NUR,
-                LTRIM(RTRIM(I.Indicador)) AS Indicador,
+                M.NUR,
+                LTRIM(RTRIM(M.Indicador)) AS Indicador,
                 SUM(VD.Cantidad) AS Avance
-            FROM PowerStreet.Venta_Diaria VD
-            INNER JOIN Rutas R
-                ON R.NUR = VD.NUR
+            FROM Metas M
+            INNER JOIN PowerStreet.Venta_Diaria VD
+                ON VD.NUR = M.NUR
             INNER JOIN CATALOGOS.Articulos A
                 ON A.Codigo = VD.Codigo_Articulo
-            INNER JOIN #Indicadores I
-                ON EXISTS
-                (
-                    SELECT 1
-                    FROM STRING_SPLIT(I.Indicador, ''+'') S
-                    WHERE
-                        LTRIM(RTRIM(S.value)) = LTRIM(RTRIM(A.Familia))
-                )
             WHERE
                 VD.Fecha BETWEEN @fecha_inicio AND @fecha
+                AND EXISTS
+                (
+                    SELECT 1
+                    FROM STRING_SPLIT(M.Indicador, ''+'') S
+                    WHERE LTRIM(RTRIM(S.value)) = LTRIM(RTRIM(A.Familia))
+                )
             GROUP BY
-                VD.NUR,
-                LTRIM(RTRIM(I.Indicador))
+                M.NUR,
+                LTRIM(RTRIM(M.Indicador))
         ),
 
         Datos AS
@@ -297,10 +270,10 @@ BEGIN
                 R.NUR,
                 R.CLO,
                 I.Indicador,
-                COALESCE(M.MetaPeriodo, 0) AS MetaPeriodo,
-                COALESCE(V.Avance, 0) AS Avance,
-                CEILING(COALESCE(M.ObjAlDia, 0)) AS ObjAlDia
-            FROM Rutas R
+                CAST(CEILING(COALESCE(M.MetaPeriodo, 0)) AS INT) AS MetaPeriodo,
+                CAST(COALESCE(V.Avance, 0) AS DECIMAL(18,3)) AS Avance,
+                CAST(CEILING(COALESCE(M.ObjAlDia, 0)) AS INT) AS ObjAlDia
+            FROM RutasConMeta R
             CROSS JOIN #Indicadores I
             LEFT JOIN Metas M
                 ON M.NUR = R.NUR
@@ -329,4 +302,4 @@ BEGIN
             @zona = @zona,
             @ruta = @ruta;
     END;
-    GO      
+    GO   

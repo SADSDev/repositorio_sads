@@ -94,7 +94,7 @@ BEGIN
         @DiasHabilesTranscurridos = COUNT(*)
     FROM CATALOGOS.Calendario
     WHERE Fecha BETWEEN @FechaInicioPeriodo
-                    AND @FechaCorte
+                    AND @fecha
       AND Es_Habil = 1;
 
     -------------------------------------------------------
@@ -166,11 +166,25 @@ BEGIN
         LEFT JOIN Rutas B
             ON A.NUR = B.NUR
         WHERE
-            A.Fecha BETWEEN @FechaInicioPeriodo
-                        AND @FechaCorte
+            A.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
             AND (@agencia IS NULL OR B.Agencia=@agencia)
         GROUP BY
             A.NUR
+    ),
+
+    ObjetivoAlDia AS
+    (
+        SELECT
+            M.NUR,
+            SUM(M.Valor_Meta) AS Objetivo_Al_Dia
+        FROM SADS.SegOper_Metas M
+        INNER JOIN Rutas R
+            ON M.NUR = R.NUR
+        WHERE
+            M.Indicador = 'VISITAS EFECTIVAS'
+            AND M.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+        GROUP BY
+            M.NUR
     ),
 
     -------------------------------------------------------
@@ -181,26 +195,28 @@ BEGIN
             A.CLO,
             A.Meta,
             B.Avance,
-            CAST(ROUND(B.Avance / NULLIF(A.Meta,0),4)
-            AS DECIMAL(10,4))
-            AS Cobertura_Meta,
-            CAST(CEILING(A.Meta *(@DiasHabilesTranscurridos * 1.0/ NULLIF(@DiasHabiles,0)))
-            AS DECIMAL(10,2))
-            AS Objetivo_Al_Dia,
-            CAST(ROUND(B.Avance -(A.Meta *(@DiasHabilesTranscurridos * 1.0/ NULLIF(@DiasHabiles,0))),2)
-            AS DECIMAL(10,2))
-            AS Avance_VS_Obj_Al_Dia,
+            D.Objetivo_Al_Dia,
+            CAST(ROUND(B.Avance / NULLIF(A.Meta,0),4) AS DECIMAL(10,4)) AS Cobertura_Meta,
+            CAST(B.Avance - CEILING(D.Objetivo_Al_Dia) AS INT) AS Avance_VS_Obj_Al_Dia,
             CASE
-                WHEN(B.Avance -(A.Meta *(@DiasHabilesTranscurridos * 1.0/ NULLIF(@DiasHabiles,0)))) < 0
-                THEN
-                ISNULL(CAST(ROUND(ABS(B.Avance -(A.Meta *(@DiasHabilesTranscurridos * 1.0/ NULLIF(@DiasHabiles,0))))/ NULLIF(@DiasHabilesRestantes,0),2) AS DECIMAL(10,2)),0)
+                WHEN (B.Avance - D.Objetivo_Al_Dia) < 0
+                THEN ISNULL(
+                    CAST(
+                        ROUND(
+                            ABS(B.Avance - D.Objetivo_Al_Dia) / NULLIF(@DiasHabilesRestantes,0),
+                            2
+                        ) AS DECIMAL(10,2)
+                    ),
+                    0
+                )
                 ELSE 0
-            END
-            AS Visitas_Adicionales_Por_Dia,
-            CAST(ROUND(A.Meta /((B.Visitas_Programadas / 6.0)* @DiasHabiles),4) AS DECIMAL(10,4)) AS Efectividad_Visitas
+            END AS Visitas_Adicionales_Por_Dia,
+            CAST(ROUND(A.Meta / ((B.Visitas_Programadas / 6.0) * @DiasHabiles),4) AS DECIMAL(10,4)) AS Efectividad_Visitas
         FROM ObjetivoVisitas A
         LEFT JOIN AvanceHoy B
             ON A.NUR = B.NUR
+        LEFT JOIN ObjetivoAlDia D
+            ON A.NUR = D.NUR
     )
     -------------------------------------------------------
     -- Resultado final
@@ -211,8 +227,8 @@ BEGIN
         CEILING(Meta) AS Meta,
         Avance,
         Cobertura_Meta,
-        Objetivo_Al_Dia,
-        Avance_VS_Obj_Al_Dia,
+        CEILING(Objetivo_Al_Dia) AS Objetivo_Al_Dia ,
+        Avance_VS_Obj_Al_Dia ,
         Visitas_Adicionales_Por_Dia,
         Efectividad_Visitas
     FROM TablaOperacionVisitas

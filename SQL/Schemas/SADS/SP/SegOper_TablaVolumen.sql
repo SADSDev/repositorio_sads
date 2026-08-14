@@ -145,8 +145,8 @@ BEGIN
                 ELSE 1
             END AS EsGTP
         FROM PowerStreet.Venta_Diaria VD
-        INNER JOIN Rutas R
-            ON R.NUR = VD.NUR
+        INNER JOIN Metas M
+            ON M.NUR = VD.NUR
         LEFT JOIN CATALOGOS.Clientes_GTP GTP
             ON GTP.Cliente = VD.Cliente
         WHERE
@@ -193,11 +193,11 @@ BEGIN
                 CEILING(COALESCE(M.ObjAlDia,0) * 1000) / 1000.0
                 AS DECIMAL(18,3)
             ) AS ObjAlDia
-        FROM Rutas R
-        LEFT JOIN Metas M
-            ON M.NUR = R.NUR
+        FROM Metas M
+        INNER JOIN Rutas R
+            ON R.NUR = M.NUR
         LEFT JOIN Avances A
-            ON A.NUR = R.NUR
+            ON A.NUR = M.NUR
     )
 
     SELECT

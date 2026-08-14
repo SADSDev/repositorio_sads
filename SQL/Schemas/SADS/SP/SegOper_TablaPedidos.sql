@@ -97,7 +97,7 @@ BEGIN
         (
             SELECT
                 A.*,
-                R.Agencia,
+                R.CLO,
                 ROW_NUMBER() OVER
                 (
                     PARTITION BY A.Orden
@@ -117,7 +117,7 @@ BEGIN
     (
         SELECT
             NUR,
-            Agencia,
+            CLO,
             COUNT(Orden) AS Asignados,
             SUM(
                 CASE
@@ -159,7 +159,7 @@ BEGIN
         FROM pedidos_filtrado
         GROUP BY
             NUR,
-            Agencia
+            CLO
     )
 
     SELECT *

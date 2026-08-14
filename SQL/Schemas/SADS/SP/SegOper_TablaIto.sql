@@ -97,6 +97,7 @@ BEGIN
         (
             SELECT
                 A.*,
+                R.CLO AS CLO_Ruta,
                 ROW_NUMBER() OVER
                 (
                     PARTITION BY
@@ -126,6 +127,7 @@ BEGIN
     (
         SELECT
             NUR,
+            CLO_Ruta AS CLO,
             Fecha,
             MAX(Visitas_Totales) AS Visitas_Totales,
             MAX(Visitas_Geocerca) AS Visitas_Geocerca,
@@ -140,6 +142,7 @@ BEGIN
         FROM ito_filtrado
         GROUP BY
             NUR,
+            CLO_Ruta,
             Fecha
     ),
 
@@ -147,6 +150,7 @@ BEGIN
     (
         SELECT
             NUR,
+            CLO,
             SUM(Visitas_Totales) AS Visitas_Totales,
 
             CAST(
@@ -168,7 +172,9 @@ BEGIN
             ) AS GPS
 
         FROM ito_por_dia
-        GROUP BY NUR
+        GROUP BY
+            NUR,
+            CLO
     )
 
     SELECT *

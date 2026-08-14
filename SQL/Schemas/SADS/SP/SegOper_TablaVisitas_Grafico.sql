@@ -167,10 +167,7 @@ BEGIN
             ON A.NUR = R.NUR
 
         WHERE
-
-            A.Fecha BETWEEN @FechaInicioPeriodo
-                        AND @FechaCorte
-
+            A.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
         GROUP BY
 
             A.NUR
@@ -188,8 +185,7 @@ BEGIN
 
         WHERE
             M.Indicador = 'VISITAS EFECTIVAS'
-            AND M.Fecha BETWEEN @FechaInicioPeriodo
-                            AND @FechaCorte
+            AND M.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
 
         GROUP BY
             M.NUR
