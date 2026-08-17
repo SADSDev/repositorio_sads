@@ -88,12 +88,12 @@ def modeloMAM(request: MAMRequest):
     )
 
     for marca in request.marcas_estrategicas:
-        df_modelo_final[marca.marca] = (
-            df_modelo_final["peso_vol_me"] * marca.meta
+        df_mam[marca.marca] = (
+            df_mam["peso_vol_me"] * marca.meta
         )
 
-    df_modelo_final = (
-        df_modelo_final
+    df_mam = (
+        df_mam
         .drop(columns=["peso_vol",
                         "peso_vol_me",
                         "capacidad_base",
@@ -108,8 +108,8 @@ def modeloMAM(request: MAMRequest):
         )
     )   
     for marca in request.marcas_estrategicas:
-        df_modelo_final[marca.marca] = redondear_conservando_total(
-            df_modelo_final,
+        df_mam[marca.marca] = redondear_conservando_total(
+            df_mam,
             marca.marca,
             marca.meta
         )
