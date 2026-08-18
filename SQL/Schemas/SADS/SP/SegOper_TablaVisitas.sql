@@ -238,7 +238,7 @@ BEGIN
         Cobertura_Meta,
         CEILING(Objetivo_Al_Dia) AS Objetivo_Al_Dia ,
         Avance_VS_Obj_Al_Dia ,
-        Visitas_Adicionales_Por_Dia,
+        CEILING(Visitas_Adicionales_Por_Dia) AS Visitas_Adicionales_Por_Dia,
         Efectividad_Visitas
     FROM TablaOperacionVisitas
     ORDER BY CLO;
