@@ -122,7 +122,7 @@ BEGIN
 
             SUM(
                 CASE
-                    WHEN Cantidad_Entrega >= Cantidad_Orden
+                    WHEN Cantidad_Entrega > 0
                     THEN 1
                     ELSE 0
                 END

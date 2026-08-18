@@ -200,15 +200,24 @@ BEGIN
             CAST(B.Avance - CEILING(D.Objetivo_Al_Dia) AS INT) AS Avance_VS_Obj_Al_Dia,
             CASE
                 WHEN (B.Avance - D.Objetivo_Al_Dia) < 0
-                THEN ISNULL(
-                    CAST(
+                THEN CASE
+                    WHEN @DiasHabilesRestantes > 0
+                    THEN ISNULL(
+                        CAST(
+                            ROUND(
+                                ABS(B.Avance - D.Objetivo_Al_Dia) / NULLIF(@DiasHabilesRestantes,0),
+                                2
+                            ) AS DECIMAL(10,2)
+                        ),
+                        0
+                    )
+                    ELSE CAST(
                         ROUND(
-                            ABS(B.Avance - D.Objetivo_Al_Dia) / NULLIF(@DiasHabilesRestantes,0),
+                            ABS(B.Avance - D.Objetivo_Al_Dia),
                             2
                         ) AS DECIMAL(10,2)
-                    ),
-                    0
-                )
+                    )
+                END
                 ELSE 0
             END AS Visitas_Adicionales_Por_Dia,
             CAST(ROUND(A.Meta / ((B.Visitas_Programadas / 6.0) * @DiasHabiles),4) AS DECIMAL(10,4)) AS Efectividad_Visitas
