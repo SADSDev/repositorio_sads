@@ -6,6 +6,7 @@ BEGIN
     SELECT  
         Agencia,  
         CLO  
-    FROM PWST.CATALOGOS_Agencias  
+    FROM PWST.CATALOGOS_Agencias
+    WHERE Agencia NOT IN (2, 3, 9, 10)  
     ORDER BY Agencia;  
 END;  

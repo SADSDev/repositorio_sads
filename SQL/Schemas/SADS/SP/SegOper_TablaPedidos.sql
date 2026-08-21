@@ -153,7 +153,8 @@ BEGIN
                 AS DECIMAL(10,4)
             ) AS Fillrate,
             CAST(
-                AVG(Fullfillment) / 100.0
+                SUM((Fullfillment/100) * Cantidad_Orden)
+                / NULLIF(SUM(Cantidad_Orden), 0)
                 AS DECIMAL(10,4)
             ) AS Fullfillment
         FROM pedidos_filtrado
