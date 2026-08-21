@@ -1,14 +1,24 @@
-CREATE TABLE ANALYTICS.MAM_Ponderaciones
-(
-    Mes INT NOT NULL,
-    Peso DECIMAL(4,3) NOT NULL
-);
+USE [DataMart]
 GO
 
-INSERT INTO ANALYTICS.MAM_Ponderaciones
+/****** Object:  Table [ANALYTICS].[MAM_Ponderaciones]    Script Date: 20/08/2026 10:23:47 a. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [PWST].[ANALYTICS_MAM_Ponderaciones](
+	[Mes] [int] NULL,
+	[Peso] [decimal](4, 3) NULL
+) ON [PRIMARY]
+GO
+
+
+INSERT INTO [PWST].[ANALYTICS_MAM_Ponderaciones]
 (
-    mes,
-    peso
+    Mes,
+    Peso
 )
 VALUES
     (1, 0.4),

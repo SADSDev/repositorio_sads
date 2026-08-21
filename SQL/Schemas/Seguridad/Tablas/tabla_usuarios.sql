@@ -1,22 +1,30 @@
-CREATE TABLE Seguridad.Usuarios
-(
-    Id INT IDENTITY(1,1) NOT NULL,
-
-    NombreUsuario      VARCHAR(50)  NOT NULL,
-    Contrasena         VARCHAR(50)  NOT NULL,
-    NombreCompleto     VARCHAR(150) NOT NULL,
-
-    Activo             BIT NOT NULL
-        CONSTRAINT DF_Usuarios_Activo DEFAULT(1),
-
-    FechaCreacion      DATETIME2 NOT NULL
-        CONSTRAINT DF_Usuarios_FechaCreacion DEFAULT(GETDATE()),
-
-    CONSTRAINT PK_Usuarios
-        PRIMARY KEY (Id),
-
-    CONSTRAINT UQ_Usuarios_NombreUsuario
-        UNIQUE (NombreUsuario)
-);
+USE [DataMart]
 GO
 
+/****** Object:  Table [Seguridad].[Usuarios]    Script Date: 20/08/2026 01:06:05 p. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [PWST].[SEGURIDAD_Usuarios](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[NombreUsuario] [varchar](50) NOT NULL,
+	[Contrasena] [varchar](50) NOT NULL,
+	[NombreCompleto] [varchar](150) NOT NULL,
+	[Activo] [bit] NOT NULL,
+	[FechaCreacion] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK_Usuarios] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY],
+ CONSTRAINT [UQ_Usuarios_NombreUsuario] UNIQUE NONCLUSTERED 
+(
+	[NombreUsuario] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [PWST].[SEGURIDAD_Usuarios] ADD  CONSTRAINT [DF_Usuarios_Activo]  DEFAULT ((1)) FOR [Activo]
+GO

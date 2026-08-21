@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE Seguridad.IniciarSesion
+CREATE OR ALTER PROCEDURE PWST.SEGURIDAD_IniciarSesion
 (
     @nombre       VARCHAR(50),
     @contrasena   VARCHAR(255),
@@ -18,8 +18,8 @@ BEGIN
     SELECT
         @UsuarioId = U.Id,
         @RolId = UA.RolId
-    FROM Seguridad.Usuarios U
-    INNER JOIN Seguridad.UsuarioAplicacion UA
+    FROM PWST.SEGURIDAD_Usuarios U
+    INNER JOIN PWST.SEGURIDAD_UsuarioAplicacion UA
         ON U.Id = UA.UsuarioId
     WHERE
         U.NombreUsuario = @nombre
@@ -53,18 +53,18 @@ BEGIN
         UP.PermisoId,
 
         P.Permiso
-    FROM Seguridad.Usuarios U
+    FROM PWST.SEGURIDAD_Usuarios U
 
-    INNER JOIN Seguridad.UsuarioAplicacion UA
+    INNER JOIN PWST.SEGURIDAD_UsuarioAplicacion UA
         ON U.Id = UA.UsuarioId
 
-    INNER JOIN Seguridad.Roles R
+    INNER JOIN PWST.SEGURIDAD_Roles R
         ON UA.RolId = R.RolId
 
-    LEFT JOIN Seguridad.UsuarioPermisos UP
+    LEFT JOIN Seguridad_UsuarioPermisos UP
         ON UA.UsuarioAplicacionId = UP.UsuarioAplicacionId
 
-    LEFT JOIN Seguridad.Permisos P
+    LEFT JOIN PWST.SEGURIDAD_Permisos P
         ON UP.PermisoId = P.PermisoId
 
     WHERE

@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE SADS.SegOper_TablaIto
+CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_TablaIto
 (
     @fecha DATE,
     @agencia INT = NULL,
@@ -67,9 +67,9 @@ BEGIN
             A.Agencia,
             A.CLO,
             V.Grupo AS Zona
-        FROM CATALOGOS.Rutas_Evaluables V
+        FROM PWST.CATALOGOS_Rutas_Evaluables V
 
-        INNER JOIN CATALOGOS.Agencias A
+        INNER JOIN PWST.CATALOGOS_Agencias A
             ON V.NUR LIKE A.Clave_NUR + '%'
 
         WHERE
@@ -107,7 +107,7 @@ BEGIN
                         A.Apertura
                     ORDER BY A.Fecha
                 ) AS rn
-            FROM PowerStreet.ITO_Detallado A
+            FROM PWST.POWERSTREET_ITO_Detallado A
 
             INNER JOIN Rutas R
                 ON A.NUR = R.NUR

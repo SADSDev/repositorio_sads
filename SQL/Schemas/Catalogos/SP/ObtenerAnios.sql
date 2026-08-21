@@ -1,10 +1,10 @@
-CREATE   PROCEDURE CATALOGOS.ObtenerAniosDisponibles  
+CREATE OR ALTER PROCEDURE PWST.CATALOGOS_ObtenerAnios  
 AS  
 BEGIN  
     SET NOCOUNT ON;  
   
     SELECT DISTINCT  
         Anio  
-    FROM CATALOGOS.Calendario  
+    FROM PSWST.CATALOGOS_Calendario  
     ORDER BY Anio;  
 END;  

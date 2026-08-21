@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE SADS.SegOper_TablaVolumenME
+CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_TablaVolumenME
 (
     @fecha DATE,
     @agencia INT = NULL,
@@ -79,7 +79,7 @@ BEGIN
     SELECT DISTINCT
         LTRIM(RTRIM(M.Indicador)) AS Indicador
     INTO #Indicadores
-    FROM SADS.SegOper_Metas M
+    FROM PWST.SADS_SegOper_Metas M
     WHERE
         M.CategoriaId = 1
         AND UPPER(LTRIM(RTRIM(M.Indicador))) <> 'VOLUMEN'
@@ -120,7 +120,7 @@ BEGIN
                     QUOTENAME('Meta ' + I.Indicador)
                 ),
                 ','
-            ) WITHIN GROUP (ORDER BY I.Indicador),
+            ),
 
         @columnas_avance =
             STRING_AGG(
@@ -135,7 +135,7 @@ BEGIN
                     QUOTENAME('Avance ' + I.Indicador)
                 ),
                 ','
-            ) WITHIN GROUP (ORDER BY I.Indicador),
+            ),
 
         @columnas_objetivo =
             STRING_AGG(
@@ -150,7 +150,7 @@ BEGIN
                     QUOTENAME('ObjAlDia ' + I.Indicador)
                 ),
                 ','
-            ) WITHIN GROUP (ORDER BY I.Indicador),
+            ),
 
         @columnas_alcance =
             STRING_AGG(
@@ -181,7 +181,7 @@ BEGIN
                     QUOTENAME('Alcance ' + I.Indicador)
                 ),
                 ','
-            ) WITHIN GROUP (ORDER BY I.Indicador)
+            )
     FROM #Indicadores I;
 
     SET @columnas =
@@ -198,8 +198,8 @@ BEGIN
             A.Agencia,
             A.CLO,
             V.Grupo AS Zona
-        FROM CATALOGOS.Rutas_Evaluables V
-        INNER JOIN CATALOGOS.Agencias A
+        FROM PWST.CATALOGOS_Rutas_Evaluables V
+        INNER JOIN PWST.CATALOGOS_Agencias A
             ON V.NUR LIKE A.Clave_NUR + ''%''
         WHERE
             V.NUR <> ''1125632M29''
@@ -241,7 +241,7 @@ BEGIN
                 END
             ) AS ObjAlDia
 
-        FROM SADS.SegOper_Metas M
+        FROM PWST.SADS_SegOper_Metas M
         INNER JOIN Rutas R
             ON R.NUR = M.NUR
         INNER JOIN #Indicadores I
@@ -261,9 +261,9 @@ BEGIN
             LTRIM(RTRIM(M.Indicador)) AS Indicador,
             SUM(VD.Cantidad) AS Avance
         FROM Metas M
-        INNER JOIN PowerStreet.Venta_Diaria VD
+        INNER JOIN PWST.POWERSTREET_Venta_Diaria VD
             ON VD.NUR = M.NUR
-        INNER JOIN CATALOGOS.Articulos A
+        INNER JOIN PWST.CATALOGOS_Articulos A
             ON A.Codigo = VD.Codigo_Articulo
         WHERE
             VD.Fecha BETWEEN @fecha_inicio AND @fecha

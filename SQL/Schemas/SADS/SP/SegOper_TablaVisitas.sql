@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE SADS.SegOper_TablaVisitas
+CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_TablaVisitas
 (
     @fecha DATE,
     @agencia INT=NULL,
@@ -82,7 +82,7 @@ BEGIN
     -------------------------------------------------------
     SELECT
         @DiasHabiles = COUNT(*)
-    FROM CATALOGOS.Calendario
+    FROM PWST.CATALOGOS_Calendario
     WHERE Fecha BETWEEN @FechaInicioPeriodo
                     AND @FechaFinPeriodo
       AND Es_Habil = 1;
@@ -92,7 +92,7 @@ BEGIN
     -------------------------------------------------------
     SELECT
         @DiasHabilesTranscurridos = COUNT(*)
-    FROM CATALOGOS.Calendario
+    FROM PWST.CATALOGOS_Calendario
     WHERE Fecha BETWEEN @FechaInicioPeriodo
                     AND @fecha
       AND Es_Habil = 1;
@@ -112,9 +112,9 @@ BEGIN
             A.Agencia,
             A.CLO,
             V.Grupo AS Zona
-        FROM CATALOGOS.Rutas_Evaluables V
+        FROM PWST.CATALOGOS_Rutas_Evaluables V
 
-        INNER JOIN CATALOGOS.Agencias A
+        INNER JOIN PWST.CATALOGOS_Agencias A
             ON V.NUR LIKE A.Clave_NUR + '%'
 
         WHERE
@@ -140,7 +140,7 @@ BEGIN
             M.NUR,
             SUM(M.Valor_Meta) AS Meta,
             R.CLO
-        FROM SADS.SegOper_Metas M
+        FROM PWST.SADS_SegOper_Metas M
 
         INNER JOIN Rutas R
             ON M.NUR = R.NUR
@@ -162,7 +162,7 @@ BEGIN
             A.NUR,
             SUM(A.Visitas_Con_Compras) AS Avance,
             MAX(A.Visitas_Programadas) AS Visitas_Programadas
-        FROM PowerStreet.Seguimiento_Indicadores A
+        FROM PWST.POWERSTREET_Seguimiento_Indicadores A
         LEFT JOIN Rutas B
             ON A.NUR = B.NUR
         WHERE
@@ -177,7 +177,7 @@ BEGIN
         SELECT
             M.NUR,
             SUM(M.Valor_Meta) AS Objetivo_Al_Dia
-        FROM SADS.SegOper_Metas M
+        FROM PWST.SADS_SegOper_Metas M
         INNER JOIN Rutas R
             ON M.NUR = R.NUR
         WHERE
@@ -219,8 +219,7 @@ BEGIN
                     )
                 END
                 ELSE 0
-            END AS Visitas_Adicionales_Por_Dia,
-            CAST(ROUND(A.Meta / ((B.Visitas_Programadas / 6.0) * @DiasHabiles),4) AS DECIMAL(10,4)) AS Efectividad_Visitas
+            END AS Visitas_Adicionales_Por_Dia
         FROM ObjetivoVisitas A
         LEFT JOIN AvanceHoy B
             ON A.NUR = B.NUR
@@ -238,8 +237,7 @@ BEGIN
         Cobertura_Meta,
         CEILING(Objetivo_Al_Dia) AS Objetivo_Al_Dia ,
         Avance_VS_Obj_Al_Dia ,
-        CEILING(Visitas_Adicionales_Por_Dia) AS Visitas_Adicionales_Por_Dia,
-        Efectividad_Visitas
+        CEILING(Visitas_Adicionales_Por_Dia) AS Visitas_Adicionales_Por_Dia
     FROM TablaOperacionVisitas
     ORDER BY CLO;
 

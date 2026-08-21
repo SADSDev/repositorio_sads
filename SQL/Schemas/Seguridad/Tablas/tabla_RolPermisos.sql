@@ -1,16 +1,34 @@
-CREATE TABLE Seguridad.RolPermisos
+USE [DataMart]
+GO
+
+/****** Object:  Table [Seguridad].[RolPermisos]    Script Date: 20/08/2026 01:01:15 p. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [PWST].[SEGURIDAD_RolPermisos](
+	[RolId] [int] NOT NULL,
+	[PermisoId] [int] NOT NULL,
+ CONSTRAINT [PK_RolPermisos] PRIMARY KEY CLUSTERED 
 (
-    RolId INT NOT NULL,
-    PermisoId INT NOT NULL,
+	[RolId] ASC,
+	[PermisoId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
 
-    CONSTRAINT PK_RolPermisos
-        PRIMARY KEY (RolId, PermisoId),
+ALTER TABLE [PWST].[SEGURIDAD_RolPermisos]  WITH CHECK ADD  CONSTRAINT [FK_RolPermisos_Permisos] FOREIGN KEY([PermisoId])
+REFERENCES [PWST].[SEGURIDAD_Permisos] ([PermisoId])
+GO
 
-    CONSTRAINT FK_RolPermisos_Roles
-        FOREIGN KEY (RolId)
-        REFERENCES Seguridad.Roles(RolId),
+ALTER TABLE [PWST].[SEGURIDAD_RolPermisos] CHECK CONSTRAINT [FK_RolPermisos_Permisos]
+GO
 
-    CONSTRAINT FK_RolPermisos_Permisos
-        FOREIGN KEY (PermisoId)
-        REFERENCES Seguridad.Permisos(PermisoId)
-);
+ALTER TABLE [PWST].[SEGURIDAD_RolPermisos]  WITH CHECK ADD  CONSTRAINT [FK_RolPermisos_Roles] FOREIGN KEY([RolId])
+REFERENCES [PWST].[SEGURIDAD_Roles] ([RolId])
+GO
+
+ALTER TABLE [PWST].[SEGURIDAD_RolPermisos] CHECK CONSTRAINT [FK_RolPermisos_Roles]
+GO

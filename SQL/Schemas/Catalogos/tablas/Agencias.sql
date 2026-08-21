@@ -1,0 +1,20 @@
+USE [DataMart]
+GO
+
+/****** Object:  Table [CATALOGOS].[Agencias]    Script Date: 20/08/2026 10:29:01 a. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [PWST].[CATALOGOS_Agencias](
+	[Agencia] [int] NOT NULL,
+	[CLO] [varchar](100) NOT NULL,
+	[Clave_NUR] [varchar](20) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[Agencia] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO

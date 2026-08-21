@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE CATALOGOS.ObtenerSupervisores
+CREATE OR ALTER PROCEDURE PWST.CATALOGOS_ObtenerSupervisores
 (
     @agencia INT=NULL 
 )
@@ -8,7 +8,7 @@ BEGIN
 
     SELECT DISTINCT
         Grupo AS Zona
-    FROM CATALOGOS.Vendedores
+    FROM PWST.CATALOGOS_Vendedores
     WHERE (@agencia IS NULL OR Agencia = @agencia)
     ORDER BY Grupo;
 END;

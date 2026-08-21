@@ -1,18 +1,28 @@
+USE [DataMart]
+GO
 
-CREATE TABLE Seguridad.Aplicaciones
+/****** Object:  Table [Seguridad].[Aplicaciones]    Script Date: 20/08/2026 12:48:51 p. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [PWST].[SEGURIDAD_Aplicaciones](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[Nombre] [varchar](100) NOT NULL,
+	[Descripcion] [varchar](250) NULL,
+	[Activo] [bit] NOT NULL,
+ CONSTRAINT [PK_Aplicaciones] PRIMARY KEY CLUSTERED 
 (
-    Id INT IDENTITY(1,1) NOT NULL,
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY],
+ CONSTRAINT [UQ_Aplicaciones_Nombre] UNIQUE NONCLUSTERED 
+(
+	[Nombre] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
 
-    Nombre        VARCHAR(100) NOT NULL,
-    Descripcion   VARCHAR(250) NULL,
-
-    Activo BIT NOT NULL
-        CONSTRAINT DF_Aplicaciones_Activo DEFAULT(1),
-
-    CONSTRAINT PK_Aplicaciones
-        PRIMARY KEY (Id),
-
-    CONSTRAINT UQ_Aplicaciones_Nombre
-        UNIQUE (Nombre)
-);
+ALTER TABLE [PWST].[SEGURIDAD_Aplicaciones] ADD  CONSTRAINT [DF_Aplicaciones_Activo]  DEFAULT ((1)) FOR [Activo]
 GO

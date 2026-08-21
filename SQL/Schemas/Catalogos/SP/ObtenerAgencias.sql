@@ -1,4 +1,4 @@
-CREATE   PROCEDURE CATALOGOS.ObtenerAgencias  
+CREATE OR ALTER PROCEDURE PWST.CATALOGOS_ObtenerAgencias  
 AS  
 BEGIN  
     SET NOCOUNT ON;  
@@ -6,6 +6,6 @@ BEGIN
     SELECT  
         Agencia,  
         CLO  
-    FROM CATALOGOS.Agencias  
+    FROM PWST.CATALOGOS_Agencias  
     ORDER BY Agencia;  
 END;  

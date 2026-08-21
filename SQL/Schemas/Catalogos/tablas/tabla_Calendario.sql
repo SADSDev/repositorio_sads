@@ -1,13 +1,27 @@
-CREATE TABLE CATALOGOS.Calendario
+USE [DataMart]
+GO
+
+/****** Object:  Table [CATALOGOS].[Calendario]    Script Date: 20/08/2026 10:39:28 a. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [PWST].[CATALOGOS_Calendario](
+	[Fecha] [date] NOT NULL,
+	[Anio] [smallint] NOT NULL,
+	[Mes] [tinyint] NOT NULL,
+	[Dia] [tinyint] NOT NULL,
+	[Dia_Semana] [tinyint] NOT NULL,
+	[Es_Asueto] [bit] NOT NULL,
+	[Es_Habil] [bit] NOT NULL,
+PRIMARY KEY CLUSTERED 
 (
-    Fecha       DATE        NOT NULL PRIMARY KEY,
-    Anio        SMALLINT    NOT NULL,
-    Mes         TINYINT     NOT NULL,
-    Dia         TINYINT     NOT NULL,
-    Dia_Semana  TINYINT     NOT NULL,
-    Es_Asueto   BIT         NOT NULL,
-    Es_Habil    BIT         NOT NULL
-);
+	[Fecha] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
 
 ------------------------------------------------------------------------
 --LLENADO DE LA TABLA

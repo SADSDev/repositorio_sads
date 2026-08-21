@@ -10,6 +10,7 @@
 import pandas as pd
 from datetime import date
 from sqlalchemy import text
+from dateutil.relativedelta import relativedelta
 
 #=================================================
 #IMPORTS
@@ -65,24 +66,25 @@ def obtener_parametros_proceso():
 
 mes_min, mes_max, agencias_a_trabajar = obtener_parametros_proceso()
 fecha_hoy=date.today()
-anio_hoy=fecha_hoy.year
-mes_inicio_proceso=fecha_hoy.month -(mes_max % 12) 
-mes_fin_proceso= fecha_hoy.month -(mes_min % 12)  
-meses = [
-    ((mes_inicio_proceso - 1 + i) % 12) + 1
-    for i in range(
-        ((mes_fin_proceso - mes_inicio_proceso) % 12) + 1
-    )
-]
-
+mes_inicio_proceso=fecha_hoy+relativedelta(day=1, months=-mes_max) 
+mes_fin_proceso= fecha_hoy+relativedelta(day=1, months=-mes_min)
+meses = pd.date_range(
+    start=mes_inicio_proceso,
+    end=mes_fin_proceso,
+    freq="MS"
+)
 
 #==========================================================
 # PROCESO
 #==========================================================
 
-df_mart=pd.DataFrame
-for mes in meses:
-    #solicitud al proceso MART
-    request=MARTRequest(mes=mes, anio=anio_hoy, agencia=8)
+df_mart_final=pd.DataFrame
+
+for agencia in agencias_a_trabajar:
+    for mes in meses:
+        #solicitud al proceso MART
+        request=MARTRequest(mes=mes.month, anio=mes.year, agencia=agencia)
+        df_mart=modeloMART(request=request)
+        
 
 

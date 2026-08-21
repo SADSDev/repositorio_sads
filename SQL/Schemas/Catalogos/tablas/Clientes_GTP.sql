@@ -1,0 +1,21 @@
+USE [DataMart]
+GO
+
+/****** Object:  Table [CATALOGOS].[Clientes_GTP]    Script Date: 20/08/2026 10:46:22 a. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [PWST].[CATALOGOS_Clientes_GTP](
+	[Ruta] [nchar](10) NULL,
+	[Cliente] [nchar](15) NOT NULL,
+	[Nombre] [nchar](50) NULL,
+	[Agencia] [int] NOT NULL,
+ CONSTRAINT [PK_Clientes_GTP] PRIMARY KEY CLUSTERED 
+(
+	[Cliente] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO

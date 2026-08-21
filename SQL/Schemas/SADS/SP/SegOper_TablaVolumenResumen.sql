@@ -1,5 +1,5 @@
 
-CREATE OR ALTER PROCEDURE SADS.SegOper_TablaVolumenResumen
+CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_TablaVolumenResumen
 (
     @fecha DATE,
     @agencia INT = NULL,
@@ -81,8 +81,8 @@ BEGIN
             A.Agencia,
             A.CLO,
             V.Grupo AS Zona
-        FROM CATALOGOS.Rutas_Evaluables V
-        INNER JOIN CATALOGOS.Agencias A
+        FROM PWST.CATALOGOS_Rutas_Evaluables V
+        INNER JOIN PWST.CATALOGOS_Agencias A
             ON V.NUR LIKE A.Clave_NUR + '%'
         WHERE
             V.NUR <> '1125632M29'
@@ -123,7 +123,7 @@ BEGIN
                 END
             ) AS ObjAlDia
 
-        FROM SADS.SegOper_Metas M
+        FROM PWST.SADS_SegOper_Metas M
 
         INNER JOIN Rutas R
             ON R.NUR = M.NUR
@@ -146,10 +146,10 @@ BEGIN
                 WHEN GTP.Cliente IS NULL THEN 0
                 ELSE 1
             END AS EsGTP
-        FROM PowerStreet.Venta_Diaria VD
+        FROM PWST.POWERSTREET_Venta_Diaria VD
         INNER JOIN Metas M
             ON M.NUR = VD.NUR
-        LEFT JOIN CATALOGOS.Clientes_GTP GTP
+        LEFT JOIN PWST.CATALOGOS_Clientes_GTP GTP
             ON GTP.Cliente = VD.Cliente
         WHERE
             VD.Fecha BETWEEN @fecha_inicio AND @fecha

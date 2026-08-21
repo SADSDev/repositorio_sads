@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE CATALOGOS.ObtenerFrecuenciasReporte
+CREATE OR ALTER PROCEDURE PWST.CATALOGOS_ObtenerFrecuenciasReporte
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -6,7 +6,7 @@ BEGIN
     SELECT
         FrecuenciaId,
         Frecuencia
-    FROM CATALOGOS.Frecuencias_Reportes
+    FROM PWST.CATALOGOS_Frecuencias_Reportes
     ORDER BY FrecuenciaId;
 END;
 GO

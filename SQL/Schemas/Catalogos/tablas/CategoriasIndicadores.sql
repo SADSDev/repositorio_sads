@@ -1,8 +1,23 @@
-CREATE TABLE CATALOGOS.Categorias_Indicador
-(
-    CategoriaId TINYINT NOT NULL
-        CONSTRAINT PK_Categorias_Indicador PRIMARY KEY,
+USE [DataMart]
+GO
 
-    Categoria VARCHAR(50) NOT NULL
-        CONSTRAINT UQ_Categorias_Indicador UNIQUE
-);
+/****** Object:  Table [CATALOGOS].[Categorias_Indicador]    Script Date: 20/08/2026 10:43:01 a. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [PWST].[CATALOGOS_Categorias_Indicador](
+	[CategoriaId] [tinyint] NOT NULL,
+	[Categoria] [varchar](50) NOT NULL,
+ CONSTRAINT [PK_Categorias_Indicador] PRIMARY KEY CLUSTERED 
+(
+	[CategoriaId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY],
+ CONSTRAINT [UQ_Categorias_Indicador] UNIQUE NONCLUSTERED 
+(
+	[Categoria] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO

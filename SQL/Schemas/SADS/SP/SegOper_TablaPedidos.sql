@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE SADS.SegOper_TablaPedidos
+CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_TablaPedidos
 (
     @fecha DATE,
     @agencia INT = NULL,
@@ -67,9 +67,9 @@ BEGIN
             A.Agencia,
             A.CLO,
             V.Grupo AS Zona
-        FROM CATALOGOS.Rutas_Evaluables V
+        FROM PWST.CATALOGOS_Rutas_Evaluables V
 
-        INNER JOIN CATALOGOS.Agencias A
+        INNER JOIN PWST.CATALOGOS_Agencias A
             ON V.NUR LIKE A.Clave_NUR + '%'
 
         WHERE
@@ -103,7 +103,7 @@ BEGIN
                     PARTITION BY A.Orden
                     ORDER BY A.Fecha DESC
                 ) AS rn
-            FROM PowerStreet.Fullfillment_Pedidos_PMM A
+            FROM PWST.POWERSTREET_Fullfillment_Pedidos_PMM A
             INNER JOIN Rutas R
                 ON A.NUR = R.NUR
             WHERE

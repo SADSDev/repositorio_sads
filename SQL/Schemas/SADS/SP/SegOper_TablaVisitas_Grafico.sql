@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE SADS.SegOper_TablaVisitas_Grafico
+CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_TablaVisitas_Grafico
 (
     @fecha DATE,
     @agencia INT=NULL,
@@ -85,7 +85,7 @@ BEGIN
 
     SELECT
         @DiasHabiles = COUNT(*)
-    FROM CATALOGOS.Calendario
+    FROM PWST.CATALOGOS_Calendario
     WHERE Fecha BETWEEN @FechaInicioPeriodo
                     AND @FechaFinPeriodo
       AND Es_Habil = 1;
@@ -96,7 +96,7 @@ BEGIN
 
     SELECT
         @DiasHabilesTranscurridos = COUNT(*)
-    FROM CATALOGOS.Calendario
+    FROM PWST.CATALOGOS_Calendario
     WHERE Fecha BETWEEN @FechaInicioPeriodo
                     AND @FechaCorte
       AND Es_Habil = 1;
@@ -112,9 +112,9 @@ BEGIN
             A.Agencia,
             A.CLO,
             V.Grupo AS Zona
-        FROM CATALOGOS.Rutas_Evaluables V
+        FROM PWST.CATALOGOS_Rutas_Evaluables V
 
-        INNER JOIN CATALOGOS.Agencias A
+        INNER JOIN PWST.CATALOGOS_Agencias A
             ON V.NUR LIKE A.Clave_NUR + '%'
 
         WHERE
@@ -139,7 +139,7 @@ BEGIN
         SELECT
             M.NUR,
             SUM(M.Valor_Meta) AS Meta
-        FROM SADS.SegOper_Metas M
+        FROM PWST.SADS_SegOper_Metas M
 
         INNER JOIN Rutas R
             ON M.NUR = R.NUR
@@ -161,7 +161,7 @@ BEGIN
 
             COALESCE(SUM(A.Visitas_Con_Compras),0) AS Avance
 
-        FROM PowerStreet.Seguimiento_Indicadores A
+        FROM PWST.POWERSTREET_Seguimiento_Indicadores A
 
         INNER JOIN Rutas R
             ON A.NUR = R.NUR
@@ -178,7 +178,7 @@ BEGIN
         SELECT
             M.NUR,
             SUM(M.Valor_Meta) AS Debe_Haber
-        FROM SADS.SegOper_Metas M
+        FROM PWST.SADS_SegOper_Metas M
 
         INNER JOIN Rutas R
             ON M.NUR = R.NUR

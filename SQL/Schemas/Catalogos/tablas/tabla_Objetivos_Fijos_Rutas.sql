@@ -1,18 +1,29 @@
-DROP TABLE IF EXISTS CATALOGOS.Objetivos_Fijos_Rutas;
+USE [DataMart]
 GO
 
-CREATE TABLE CATALOGOS.Objetivos_Fijos_Rutas
+/****** Object:  Table [CATALOGOS].[Objetivos_Fijos_Rutas]    Script Date: 20/08/2026 10:55:12 a. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [PWST].[CATALOGOS_Objetivos_Fijos_Rutas](
+	[NUR] [varchar](20) NOT NULL,
+	[CategoriaId] [tinyint] NOT NULL,
+	[Indicador] [varchar](100) NOT NULL,
+	[Valor_Objetivo] [decimal](18, 4) NOT NULL,
+ CONSTRAINT [PK_Objetivos_Fijos_Rutas] PRIMARY KEY CLUSTERED 
 (
-    NUR VARCHAR(20) NOT NULL,
-    CategoriaId TINYINT NOT NULL,
-    Indicador VARCHAR(100) NOT NULL,
-    Valor_Objetivo DECIMAL(18,4) NOT NULL,
+	[NUR] ASC,
+	[Indicador] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
 
-    CONSTRAINT PK_Objetivos_Fijos_Rutas
-        PRIMARY KEY (NUR, Indicador),
+ALTER TABLE [PWST].[CATALOGOS_Objetivos_Fijos_Rutas]  WITH CHECK ADD  CONSTRAINT [FK_Objetivos_Fijos_Rutas_Categoria] FOREIGN KEY([CategoriaId])
+REFERENCES [PWST].[CATALOGOS_Categorias_Indicador] ([CategoriaId])
+GO
 
-    CONSTRAINT FK_Objetivos_Fijos_Rutas_Categoria
-        FOREIGN KEY (CategoriaId)
-        REFERENCES CATALOGOS.Categorias_Indicador(CategoriaId)
-);
+ALTER TABLE [PWST].[CATALOGOS_Objetivos_Fijos_Rutas] CHECK CONSTRAINT [FK_Objetivos_Fijos_Rutas_Categoria]
 GO

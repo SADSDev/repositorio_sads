@@ -1,14 +1,20 @@
-CREATE TABLE CATALOGOS.Rutas_Evaluables
+USE [DataMart]
+GO
+
+/****** Object:  Table [CATALOGOS].[Rutas_Evaluables]    Script Date: 20/08/2026 12:07:21 p. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [PWST].[CATALOGOS_Rutas_Evaluables](
+	[NUR] [varchar](20) NOT NULL,
+	[Agencia] [int] NULL,
+	[Grupo] [varchar](20) NULL,
+PRIMARY KEY CLUSTERED 
 (
-    NUR         VARCHAR(20) NOT NULL,
-    Agencia     INT NULL,
-    Grupo       VARCHAR(20) NULL,
-
-    CONSTRAINT PK_Rutas_Evaluables
-        PRIMARY KEY (NUR),
-
-    CONSTRAINT FK_RutasEvaluables_Agencias
-        FOREIGN KEY (Agencia)
-        REFERENCES CATALOGOS.Agencias(Agencia)
-);
+	[NUR] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
 GO

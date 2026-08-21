@@ -3,7 +3,7 @@
 --y a los días operativos del mes de la meta
 --Esta programado en un job para correr cada día ultimo del mes en curso
 
-CREATE OR ALTER PROCEDURE SADS.ActualizarMetas
+CREATE OR ALTER PROCEDURE PWST.SADS_ActualizarMetas
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -22,7 +22,7 @@ BEGIN
     -- Días hábiles
     SELECT
         @Dias_Operativos = COUNT(*)
-    FROM CATALOGOS.Calendario
+    FROM PWST.CATALOGOS_Calendario
     WHERE
         Anio = YEAR(@Mes_Meta)
         AND Mes = MONTH(@Mes_Meta)
@@ -33,11 +33,11 @@ BEGIN
     -----------------------------------------------------
 
     DELETE
-    FROM SADS.SegOper_Metas_Mensuales
+    FROM PWST.SADS_SegOper_Metas_Mensuales
     WHERE Mes = @Mes_Meta;
 
     DELETE M
-    FROM SADS.SegOper_Metas M
+    FROM PWST.SADS_SegOper_Metas M
     WHERE
         YEAR(M.Fecha) = YEAR(@Mes_Meta)
         AND MONTH(M.Fecha) = MONTH(@Mes_Meta);
@@ -46,7 +46,7 @@ BEGIN
     -- Metas e indicadores mensuales
     -----------------------------------------------------
 
-    INSERT INTO SADS.SegOper_Metas_Mensuales
+    INSERT INTO PWST.SADS_SegOper_Metas_Mensuales
     (
         Mes,
         NUR,
@@ -60,13 +60,13 @@ BEGIN
         CategoriaId,
         Indicador,
         Valor_Objetivo
-    FROM CATALOGOS.Objetivos_Fijos_Rutas;
+    FROM PWST.CATALOGOS_Objetivos_Fijos_Rutas;
 
     -----------------------------------------------------
     -- Metas diarias
     -----------------------------------------------------
 
-    INSERT INTO SADS.SegOper_Metas
+    INSERT INTO PWST.SADS_SegOper_Metas
     (
         Fecha,
         NUR,
@@ -88,9 +88,9 @@ BEGIN
                 O.Valor_Objetivo
         END
 
-    FROM CATALOGOS.Objetivos_Fijos_Rutas O
+    FROM PWST.CATALOGOS_Objetivos_Fijos_Rutas O
 
-    CROSS JOIN CATALOGOS.Calendario C
+    CROSS JOIN PWST.CATALOGOS_Calendario C
 
     WHERE
         C.Anio = YEAR(@Mes_Meta)

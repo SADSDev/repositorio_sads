@@ -1,10 +1,19 @@
-CREATE TABLE ANALYTICS.MAM_Parametros_Ajustables
+USE [DataMart]
+GO
+
+/****** Object:  Table [ANALYTICS].[MAM_Parametros_Ajustables]    Script Date: 20/08/2026 10:19:44 a. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [PWST].[ANALYTICS_MAM_Parametros_Ajustables](
+	[Parametro] [varchar](50) NOT NULL,
+	[Valor] [float] NULL,
+PRIMARY KEY CLUSTERED 
 (
-    parametro VARCHAR(50) PRIMARY KEY,
-    valor FLOAT
-);
-
-
-INSERT INTO ANALYTICS.MAM_Parametros_Modelo
-VALUES
-('alpha',0.5);
+	[Parametro] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
