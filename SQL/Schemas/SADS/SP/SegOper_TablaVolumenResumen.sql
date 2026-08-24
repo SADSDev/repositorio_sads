@@ -2,7 +2,7 @@
 CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_TablaVolumenResumen
 (
     @fecha DATE,
-    @agencia INT = NULL,
+    @agencia VARCHAR(200) = NULL,
     @zona VARCHAR(20) = NULL,
     @ruta VARCHAR(10) = NULL,
     @frecuencia INT
@@ -10,6 +10,11 @@ CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_TablaVolumenResumen
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    SET @agencia = NULLIF(
+        REPLACE(LTRIM(RTRIM(@agencia)), ' ', ''),
+        ''
+    );
 
     IF @frecuencia NOT IN (1, 2, 3)
     BEGIN
@@ -86,7 +91,13 @@ BEGIN
             ON V.NUR LIKE A.Clave_NUR + '%'
         WHERE
             V.NUR <> '1125632M29'
-            AND (@agencia IS NULL OR A.Agencia = @agencia)
+            AND (
+                @agencia IS NULL
+                OR CHARINDEX(
+                    ',' + CONVERT(VARCHAR(10), A.Agencia) + ',',
+                    ',' + @agencia + ','
+                ) > 0
+            )
             AND (@zona IS NULL OR V.Grupo = @zona)
             AND
             (
