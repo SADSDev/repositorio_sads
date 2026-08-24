@@ -28,7 +28,7 @@ def obtener_tabla_ventas(agencia: int, fecha_inicio: date, fecha_fin: date):
             WITH rutas AS (
                 SELECT
                     NUR
-                FROM CATALOGOS.Rutas_Evaluables
+                FROM PWST.CATALOGOS_Rutas_Evaluables
                 WHERE Agencia = :agencia
             ),
 
@@ -36,7 +36,7 @@ def obtener_tabla_ventas(agencia: int, fecha_inicio: date, fecha_fin: date):
                 SELECT
                     Codigo,
                     Familia
-                FROM CATALOGOS.Articulos
+                FROM PWST.CATALOGOS_Articulos
             ),
 
             ventas_sin_gtp AS (
@@ -51,8 +51,8 @@ def obtener_tabla_ventas(agencia: int, fecha_inicio: date, fecha_fin: date):
                         WHEN B.Cliente IS NOT NULL THEN 1
                         ELSE 0
                     END AS existe_en_B
-                FROM PowerStreet.Venta_Diaria A
-                LEFT JOIN CATALOGOS.Clientes_GTP B
+                FROM POWERSTREET_Venta_Diaria A
+                LEFT JOIN PWST.CATALOGOS_Clientes_GTP B
                     ON A.Cliente = B.Cliente
                 LEFT JOIN articulos C
                     ON A.Codigo_Articulo = C.Codigo
@@ -95,7 +95,7 @@ def obtener_tabla_ux(agencia:int):
             WITH rutas AS (
                 SELECT
                     NUR
-                FROM CATALOGOS.Rutas_Evaluables
+                FROM PWST.CATALOGOS_Rutas_Evaluables
                 WHERE Agencia = :agencia
             ),
 
@@ -105,7 +105,7 @@ def obtener_tabla_ux(agencia:int):
                     A.NUR,
                     A.Codigo_GLN,
                     A.Status
-                FROM PowerStreet.Universo_Clientes A
+                FROM PWST.POWERSTREET_Universo_Clientes A
                 INNER JOIN rutas B
                     ON A.NUR = B.NUR
                 WHERE A.NUR <> '1125632M29'
@@ -140,7 +140,7 @@ def obtener_vigencias_me(
                         1
                     ) AS Mes,
                     Fin_Vigencia
-                FROM CATALOGOS.Vigencias_ME
+                FROM PWST.CATALOGOS_Vigencias_ME
                 WHERE Agencia = :agencia
 
                 UNION ALL

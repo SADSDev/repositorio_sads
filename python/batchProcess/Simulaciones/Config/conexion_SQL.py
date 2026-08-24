@@ -11,14 +11,14 @@ from sqlalchemy.exc import InterfaceError, OperationalError
 #----------------------------
 #IMPORTS
 #---------------------------
-from Config.parametros import (
+from .parametros import (
     servidor,
     bd,
     usuario,
     contrasena
 )
 
-from Core.exceptions import ErrorConexionSQL
+from ..Core.exceptions import ErrorConexionSQL
 
 #------------------------------------------------------------------------
 # MANEJO DE ERRORES DE CONEXIÓN SQL

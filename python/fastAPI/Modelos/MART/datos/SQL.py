@@ -14,7 +14,7 @@ from dateutil.relativedelta import relativedelta
 #----------------------------------------------------
 # IMPORTS
 #----------------------------------------------------
-from Config.conexion_SQL import (
+from ...Config.conexion_SQL import (
     manejar_error_conexion_sql,
     obtener_motor
 )
@@ -31,7 +31,7 @@ def obtener_esfuerzo_historico(agencia: int, fecha_inicio: date, fecha_fin: date
             WITH rutas AS (
                 SELECT
                     NUR
-                FROM CATALOGOS.Rutas_Evaluables
+                FROM PWST.CATALOGOS_Rutas_Evaluables
                 WHERE Agencia = :agencia
             ),
 
@@ -39,7 +39,7 @@ def obtener_esfuerzo_historico(agencia: int, fecha_inicio: date, fecha_fin: date
                 SELECT
                     Codigo,
                     Familia
-                FROM CATALOGOS.Articulos
+                FROM PWST.CATALOGOS_Articulos
             ),
 
             ventas_sin_gtp AS (
@@ -54,8 +54,8 @@ def obtener_esfuerzo_historico(agencia: int, fecha_inicio: date, fecha_fin: date
                         WHEN B.Cliente IS NOT NULL THEN 1
                         ELSE 0
                     END AS existe_en_B
-                FROM PowerStreet.Venta_Diaria A
-                LEFT JOIN CATALOGOS.Clientes_GTP B
+                FROM PWST.POWERSTREET_Venta_Diaria A
+                LEFT JOIN PWST.CATALOGOS_Clientes_GTP B
                     ON A.Cliente = B.Cliente
                 LEFT JOIN articulos C
                     ON A.Codigo_Articulo = C.Codigo
@@ -125,7 +125,7 @@ def obtener_calendario(fecha_fin: date):
     return pd.read_sql(
         text("""
             SELECT *
-            FROM CATALOGOS.Calendario
+            FROM PWST.CATALOGOS_Calendario
             WHERE Fecha BETWEEN :inicio_mes AND :fin_mes
         """),
         motor,

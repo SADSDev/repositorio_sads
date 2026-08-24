@@ -10,8 +10,8 @@ from fastapi.responses import JSONResponse
 #------------------------------------------------------------------------
 # IMPORTS
 #------------------------------------------------------------------------
-from MART.modeloMART import modeloMART
-from MART.Schemas.request import MARTRequest
+from .modeloMART import modeloMART
+from .Schemas.request import MARTRequest
 
 
 #------------------------------------------------------------------------

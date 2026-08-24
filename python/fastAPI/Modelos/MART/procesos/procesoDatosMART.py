@@ -13,31 +13,33 @@ logger = logging.getLogger("uvicorn.error")
 # -------------------------------------------------
 # IMPORTS
 # -------------------------------------------------
-from Core.validarDataFrame import validar_dataframe
+from ...Core.validarDataFrame import validar_dataframe
 
-from MART.Config.parametros import (
+from ..Config.parametros import (
     obtener_ponderaciones,
     obtener_parametros,
     parametro_c,
     bet
 )
 
-from MART.datos.SQL import (
+from ..datos.SQL import (
     obtener_esfuerzo_historico,
     obtener_calendario
 )
 
-from MART.datos.esfuerzoHistorico import esfuerzo_historico
-from MART.datos.n import parametro_n
-from MART.datos.calendarioPorRuta import calendario_por_ruta
+from ..datos.esfuerzoHistorico import esfuerzo_historico
 
-from MART.procesos.promediosPondTemporales import (
+from ..datos.n import parametro_n
+
+from ..datos.calendarioPorRuta import calendario_por_ruta
+
+from .promediosPondTemporales import (
     promedio_pond_diames_diasem,
     promedio_pond_diames,
     promedio_pond_diasem
 )
 
-from MART.procesos.suavizadoJerarquico import suavizado_jerarquico
+from .suavizadoJerarquico import suavizado_jerarquico
 
 
 # -------------------------------------------------

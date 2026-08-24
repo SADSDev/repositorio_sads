@@ -9,7 +9,7 @@ import pandas as pd
 #----------------------------------------------------
 # IMPORTS
 #----------------------------------------------------
-from Config.conexion_SQL import (
+from ...Config.conexion_SQL import (
     manejar_error_conexion_sql,
     obtener_motor
 )
@@ -26,7 +26,7 @@ def obtener_ponderaciones():
     return pd.read_sql(
         text("""
             SELECT *
-            FROM ANALYTICS.MAM_Ponderaciones
+            FROM PWST.ANALYTICS_MAM_Ponderaciones
         """),
         motor
     )

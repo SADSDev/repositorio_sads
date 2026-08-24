@@ -26,7 +26,7 @@ def obtener_ponderaciones():
     return pd.read_sql(
         text("""
             SELECT *
-            FROM ANALYTICS.MAM_Ponderaciones
+            FROM PWST.ANALYTICS_MAM_Ponderaciones
         """),
         motor
     )
@@ -38,7 +38,7 @@ def obtener_parametros_ajustables():
     return pd.read_sql(
         text("""
             SELECT *
-            FROM ANALYTICS.MAM_Parametros_Ajustables
+            FROM PWST.ANALYTICS_MAM_Parametros_Ajustables
         """),
         motor
     )
