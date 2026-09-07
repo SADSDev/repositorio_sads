@@ -63,7 +63,7 @@ def normalizacion_promedios(df_calendario_rutas: pd.DataFrame,
         how="left"
     )
     .assign(
-        Peso=lambda x:
+        Peso_Esperado=lambda x:
             x["Prom_Suavizado"] /
             x.groupby("NUR")["Prom_Suavizado"]
              .transform("sum")
@@ -72,7 +72,7 @@ def normalizacion_promedios(df_calendario_rutas: pd.DataFrame,
         ["NUR","Fecha"],
         ascending=[True, True]
     )
-    [["Fecha","NUR","Peso"]]
+    [["Fecha","NUR","Peso_Esperado"]]
 )
 
     return df_mart

@@ -147,34 +147,189 @@ BEGIN
             M.NUR
     ),
 
+    RutasVentas AS
+    (
+        SELECT DISTINCT
+            V.NUR,
+            A.Agencia,
+            A.CLO,
+            V.Grupo AS Zona
+        FROM PWST.CATALOGOS_Rutas_Evaluables V
+
+        INNER JOIN PWST.CATALOGOS_Agencias A
+            ON V.NUR LIKE A.Clave_NUR + '%'
+
+        WHERE
+            (
+                @agencia IS NULL
+                OR CHARINDEX(
+                    ',' + CONVERT(VARCHAR(10), A.Agencia) + ',',
+                    ',' + @agencia + ','
+                ) > 0
+            )
+            AND (@zona IS NULL OR V.Grupo = @zona)
+            AND
+            (
+                @ruta IS NULL
+                OR CONCAT(
+                    'R',
+                    SUBSTRING(
+                        V.NUR,
+                        PATINDEX('%[A-Z]%', V.NUR) + 1,
+                        LEN(V.NUR)
+                    )
+                ) = @ruta
+            )
+    ),
+
     Ventas AS
     (
         SELECT
             VD.NUR,
+            VD.Fecha,
             VD.Cliente,
             VD.Cantidad,
+
             CASE
                 WHEN GTP.Cliente IS NULL THEN 0
                 ELSE 1
-            END AS EsGTP
+            END AS EsGTP,
+
+            CASE
+                WHEN EXISTS
+                (
+                    SELECT 1
+                    FROM PWST.CATALOGOS_Vendedores V
+                    WHERE
+                        V.NUR = VD.NUR
+                        AND V.Grupo = 'MAYOREO'
+                )
+                THEN 1
+                ELSE 0
+            END AS EsMayoreo
+
         FROM PWST.POWERSTREET_Venta_Diaria VD
-        INNER JOIN Metas M
-            ON M.NUR = VD.NUR
+
+        INNER JOIN RutasVentas R
+            ON R.NUR = VD.NUR
+
         LEFT JOIN PWST.CATALOGOS_Clientes_GTP GTP
             ON GTP.Cliente = VD.Cliente
+
         WHERE
-            VD.Fecha BETWEEN @fecha_inicio AND @fecha
+            VD.Fecha BETWEEN
+                DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+                AND @fecha
     ),
 
     Avances AS
     (
         SELECT
             NUR,
-            SUM(CASE WHEN EsGTP = 0 THEN Cantidad ELSE 0 END) AS AvanceRuta,
-            SUM(CASE WHEN EsGTP = 1 THEN Cantidad ELSE 0 END) AS InyeccionGTP
+
+            SUM(
+                CASE
+                    WHEN EsGTP = 0
+                        AND EsMayoreo = 0
+                        AND Fecha BETWEEN @fecha_inicio AND @fecha
+                    THEN Cantidad
+                    ELSE 0
+                END
+            ) AS AvanceRuta
         FROM Ventas
-        GROUP BY
-            NUR
+        GROUP BY NUR
+    ),
+
+    MetasEspeciales AS
+    (
+        SELECT
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN UPPER(LTRIM(RTRIM(M.Indicador))) = 'VOLUMEN GTP'
+                        THEN M.Valor_Meta
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS MetaGTP,
+
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN UPPER(LTRIM(RTRIM(M.Indicador))) = 'VOLUMEN MM'
+                        THEN M.Valor_Meta
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS MetaMM
+
+        FROM PWST.SADS_SegOper_MetasAgencia M
+        WHERE
+            M.Mes = DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+            AND UPPER(LTRIM(RTRIM(M.Indicador)))
+                IN ('VOLUMEN GTP', 'VOLUMEN MM')
+            AND
+            (
+                @agencia IS NULL
+                OR CHARINDEX(
+                    ',' + CONVERT(VARCHAR(10), M.Agencia) + ',',
+                    ',' + @agencia + ','
+                ) > 0
+            )
+    ),
+
+    AvancesEspeciales AS
+    (
+        SELECT
+            -- GTP acumulado al corte
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN EsGTP = 1
+                        THEN Cantidad
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS AvanceGTPMes,
+            -- GTP acumulado antes del periodo
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN EsGTP = 1
+                            AND Fecha < @fecha_inicio
+                        THEN Cantidad
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS AvanceGTPAntesPeriodo,
+            -- MM acumulado al corte
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN EsMayoreo = 1
+                        THEN Cantidad
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS AvanceMMMes,
+            -- MM acumulado antes del periodo
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN EsMayoreo = 1
+                            AND Fecha < @fecha_inicio
+                        THEN Cantidad
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS AvanceMMAntesPeriodo
+        FROM Ventas
     ),
 
     Resultado AS
@@ -193,15 +348,6 @@ BEGIN
             CAST(COALESCE(A.AvanceRuta, 0) AS DECIMAL(18, 3))
                 AS AvanceRuta,
 
-            CAST(COALESCE(A.InyeccionGTP, 0) AS DECIMAL(18, 3))
-                AS InyeccionGTP,
-
-            CAST(
-                COALESCE(A.AvanceRuta, 0)
-                + COALESCE(A.InyeccionGTP, 0)
-                AS DECIMAL(18, 3)
-            ) AS AvanceTotal,
-
             CAST(
                 CEILING(COALESCE(M.ObjAlDia,0) * 1000) / 1000.0
                 AS DECIMAL(18,3)
@@ -214,21 +360,69 @@ BEGIN
     )
 
     SELECT
-        CAST(CEILING(SUM(MetaVolumen)) AS INT)
-            AS MetaVolumen,
+        CAST(
+            CEILING(SUM(R.MetaVolumen))
+            AS INT
+        ) AS MetaVolumen,
 
-        CAST(SUM(AvanceRuta) AS DECIMAL(18,3))
-            AS AvanceRuta,
+        CAST(
+            SUM(R.AvanceRuta)
+            AS DECIMAL(18,3)
+        ) AS AvanceRuta,
 
-        CAST(SUM(InyeccionGTP) AS DECIMAL(18,3))
-            AS InyeccionGTP,
+        CAST(
+            CEILING(SUM(R.ObjAlDia))
+            AS INT
+        ) AS ObjAlDia,
 
-        CAST(SUM(AvanceTotal) AS DECIMAL(18,3))
-            AS AvanceTotal,
+        CAST(
+            CASE
+                WHEN
+                    MAX(AE.AvanceGTPMes)
+                    - MAX(ME.MetaGTP) > 0
+                THEN
+                    MAX(AE.AvanceGTPMes)
+                    - MAX(ME.MetaGTP)
+                ELSE 0
+            END
+            -
+            CASE
+                WHEN
+                    MAX(AE.AvanceGTPAntesPeriodo)
+                    - MAX(ME.MetaGTP) > 0
+                THEN
+                    MAX(AE.AvanceGTPAntesPeriodo)
+                    - MAX(ME.MetaGTP)
+                ELSE 0
+            END
+            AS DECIMAL(18,3)
+        ) AS ExcedenteGTP,
 
-        CAST(CEILING(SUM(ObjAlDia)) AS INT)
-            AS ObjAlDia
+        CAST(
+            CASE
+                WHEN
+                    MAX(AE.AvanceMMMes)
+                    - MAX(ME.MetaMM) > 0
+                THEN
+                    MAX(AE.AvanceMMMes)
+                    - MAX(ME.MetaMM)
+                ELSE 0
+            END
+            -
+            CASE
+                WHEN
+                    MAX(AE.AvanceMMAntesPeriodo)
+                    - MAX(ME.MetaMM) > 0
+                THEN
+                    MAX(AE.AvanceMMAntesPeriodo)
+                    - MAX(ME.MetaMM)
+                ELSE 0
+            END
+            AS DECIMAL(18,3)
+        ) AS ExcedenteMM
 
-    FROM Resultado;
+    FROM Resultado R
+    CROSS JOIN MetasEspeciales ME
+    CROSS JOIN AvancesEspeciales AE;
 END;
 GO 

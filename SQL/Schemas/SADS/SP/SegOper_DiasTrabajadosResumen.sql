@@ -101,25 +101,25 @@ BEGIN
 
     dias_trabajados AS (
         SELECT
-            c.Dias_Del_Mes,
+            c.Dias_Operativos,
             MIN(Dias_Trabajados) AS Dias_Trabajados
         FROM (
             SELECT
-                v.NUR,
-                COUNT(DISTINCT v.Fecha) AS Dias_Trabajados
-            FROM PWST.POWERSTREET_Venta_Diaria v
+                i.NUR,
+                SUM(i.Dias_Trabajados) AS Dias_Trabajados
+            FROM PWST.POWERSTREET_Seguimiento_Indicadores i
             INNER JOIN rutas r
-                ON v.NUR = r.NUR
-            WHERE v.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
-            GROUP BY v.NUR
+                ON i.NUR = r.NUR
+            WHERE i.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+            GROUP BY i.NUR
         ) d
         CROSS JOIN (
             SELECT
-                SUM(CAST(Es_Habil AS int)) AS Dias_Del_Mes
+                SUM(CAST(Es_Habil AS int)) AS Dias_Operativos
             FROM PWST.CATALOGOS_Calendario
             WHERE Fecha BETWEEN @FechaInicioPeriodo AND @fecha
         ) c
-        GROUP BY c.Dias_Del_Mes
+        GROUP BY c.Dias_Operativos
     )
 
     SELECT*FROM dias_trabajados

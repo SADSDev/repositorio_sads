@@ -1,10 +1,10 @@
-from MART.Schemas.request import MARTRequest
-from MART.modeloMART import modeloMART
-from MART.procesos.procesoDatosMART import obtener_datos_modelo
+from fastAPI.Modelos.MART.Schemas.request import MARTRequest
+from fastAPI.Modelos.MART.modeloMART import modeloMART
+from fastAPI.Modelos.MART.procesos.procesoDatosMART import obtener_datos_modelo
 request = MARTRequest(
     anio=2026,
-    mes=8,
-    agencia=8
+    mes=4,
+    agencia=1
 )
 
 

@@ -4,6 +4,10 @@
 --Esta programado en un job para correr cada día ultimo del mes en curso
 
 CREATE OR ALTER PROCEDURE PWST.SADS_ActualizarMetas
+(
+    @Mes_a_actualizar DATE
+)
+
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -11,13 +15,13 @@ BEGIN
     DECLARE @Mes_Meta DATE;
     DECLARE @Dias_Operativos INT;
 
-    -- Primer día del siguiente mes
-    SET @Mes_Meta = DATEFROMPARTS
-    (
-        YEAR(DATEADD(MONTH,1,GETDATE())),
-        MONTH(DATEADD(MONTH,1,GETDATE())),
-        1
-    );
+    --floor date del mes
+    
+    SET @Mes_Meta = DATEFROMPARTS(
+                        YEAR(@Mes_a_actualizar),
+                        MONTH(@Mes_a_actualizar),
+                        1
+                    )
 
     -- Días hábiles
     SELECT

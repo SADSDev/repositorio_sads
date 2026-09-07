@@ -24,12 +24,6 @@ BEGIN
 
     DECLARE @fecha_fin DATE
 
-    /*
-    Frecuencia:
-    1 = únicamente el día consultado
-    2 = lunes de la semana hasta @fecha
-    3 = primer día del mes hasta @fecha
-    */
     SET @fecha_inicio =
         CASE @frecuencia
             WHEN 1 THEN @fecha
@@ -185,7 +179,7 @@ BEGIN
             -- con la estructura mostrada.
             CAST(
                 CEILING(COALESCE(M.MetaVolumen, 0) * 1000) / 1000.0
-                AS DECIMAL(18, 3)
+                AS INT
             ) AS MetaVolumen,
 
             CAST(COALESCE(A.AvanceRuta, 0) AS DECIMAL(18, 3))
@@ -202,7 +196,7 @@ BEGIN
 
             CAST(
                 CEILING(COALESCE(M.ObjAlDia,0) * 1000) / 1000.0
-                AS DECIMAL(18,3)
+                AS INT
             ) AS ObjAlDia
         FROM Metas M
         INNER JOIN Rutas R
@@ -221,10 +215,16 @@ BEGIN
         ObjAlDia,
         CAST(
             ROUND(
+                AvanceRuta / NULLIF(MetaVolumen,0),
+                4
+            ) AS DECIMAL(10,4)
+        ) AS AlcanceRuta,
+        CAST(
+            ROUND(
                 AvanceTotal / NULLIF(MetaVolumen, 0),
                 4
             ) AS DECIMAL(10, 4)
-        ) AS Alcance
+        ) AS AlcanceTotal
     FROM Resultado
     ORDER BY
         NUR;
