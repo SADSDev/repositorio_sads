@@ -54,18 +54,37 @@ BEGIN
 
     ELSE IF @frecuencia = 2
     BEGIN
-
+        -- Lunes de la semana
         SET @FechaInicioPeriodo =
-            DATEADD(DAY,1-DATEPART(WEEKDAY,@fecha),@fecha);
+            DATEADD(
+                DAY,
+                -((DATEDIFF(DAY, '19000101', @fecha)) % 7),
+                @fecha
+            );
 
+        -- No permitir que la semana empiece antes del mes
+        IF @FechaInicioPeriodo <
+        DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+        BEGIN
+            SET @FechaInicioPeriodo =
+                DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1);
+        END;
+
+        -- Domingo de la semana
         SET @FechaFinPeriodo =
-            DATEADD(DAY,7-DATEPART(WEEKDAY,@fecha),@fecha);
+            DATEADD(DAY, 6, @FechaInicioPeriodo);
 
+        -- No permitir que la semana termine después del mes
+        IF @FechaFinPeriodo > EOMONTH(@fecha)
+        BEGIN
+            SET @FechaFinPeriodo = EOMONTH(@fecha);
+        END;
+
+        -- Fecha de corte
         IF @Hoy < @FechaFinPeriodo
             SET @FechaCorte = @fecha;
         ELSE
             SET @FechaCorte = @FechaFinPeriodo;
-
     END
 
     ELSE IF @frecuencia = 3

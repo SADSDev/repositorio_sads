@@ -224,8 +224,9 @@ BEGIN
     SELECT
         CLO,
         CEILING(Meta) AS Meta,
+        CEILING(Objetivo_Al_Dia) AS Objetivo_Al_Dia,
         Avance,
-        CEILING(Objetivo_Al_Dia) AS Objetivo_Al_Dia
+        CAST(Avance/Meta AS DECIMAL (10,4)) AS Alcance
     FROM TablaOperacionCLO
     ORDER BY CLO;
 

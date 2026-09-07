@@ -215,11 +215,14 @@ BEGIN
             END
         ) AS Meta_GTP,
 
-        MAX(
-            CASE
-                WHEN Indicador = 'VOLUMEN GTP'
-                    THEN Avance
-            END
+        CAST(
+            MAX(
+                CASE
+                    WHEN Indicador = 'VOLUMEN GTP'
+                        THEN Avance
+                END
+            ) 
+            AS DECIMAL(10,3)
         ) AS Avance_GTP,
 
         CAST(
@@ -233,18 +236,20 @@ BEGIN
             AS DECIMAL(10,4)
         ) AS Alcance_GTP,
 
-        MAX(
-            CASE
-                WHEN Indicador = 'VOLUMEN GTP'
-                    THEN
-                        CASE
-                            WHEN Avance > Valor_Meta
-                                THEN Avance - Valor_Meta
-                            ELSE 0
-                        END
-            END
+        CAST(
+            MAX(
+                CASE
+                    WHEN Indicador = 'VOLUMEN GTP'
+                        THEN
+                            CASE
+                                WHEN Avance > Valor_Meta
+                                    THEN Avance - Valor_Meta
+                                ELSE 0
+                            END
+                END
+            )
+            AS DECIMAL(10,3)
         ) AS Excedente_GTP,
-
         ---------------------------------------------------
         -- Medio Mayoreo
         ---------------------------------------------------
@@ -256,11 +261,14 @@ BEGIN
             END
         ) AS Meta_MM,
 
-        MAX(
-            CASE
-                WHEN Indicador = 'VOLUMEN MM'
-                    THEN Avance
-            END
+        CAST(
+            MAX(
+                CASE
+                    WHEN Indicador = 'VOLUMEN MM'
+                        THEN Avance
+                END
+            )
+            AS DECIMAL(10,3)
         ) AS Avance_MM,
 
         CAST(
@@ -274,18 +282,20 @@ BEGIN
             AS DECIMAL(10,4)
         ) AS Alcance_MM,
 
-        MAX(
-            CASE
-                WHEN Indicador = 'VOLUMEN MM'
-                    THEN
-                        CASE
-                            WHEN Avance > Valor_Meta
-                                THEN Avance - Valor_Meta
-                            ELSE 0
-                        END
-            END
+        CAST(
+            MAX(
+                CASE
+                    WHEN Indicador = 'VOLUMEN MM'
+                        THEN
+                            CASE
+                                WHEN Avance > Valor_Meta
+                                    THEN Avance - Valor_Meta
+                                ELSE 0
+                            END
+                END
+            )
+            AS DECIMAL(10,3) 
         ) AS Excedente_MM
-
     FROM resultado
 
     GROUP BY
