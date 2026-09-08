@@ -2,8 +2,8 @@ CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_DiasTrabajadosAgencias
 (
     @fecha DATE,
     @agencia VARCHAR(200) = NULL,
-    @zona VARCHAR(20) = NULL,
-    @ruta VARCHAR(10) = NULL,
+    @zona VARCHAR(200) = NULL,
+    @ruta VARCHAR(200) = NULL,
     @frecuencia INT
 )
 AS
@@ -14,6 +14,18 @@ BEGIN
         REPLACE(LTRIM(RTRIM(@agencia)), ' ', ''),
         ''
     );
+
+    SET @zona = NULLIF(LTRIM(RTRIM(@zona)), '');
+
+    SET @ruta = NULLIF(LTRIM(RTRIM(@ruta)), '');
+
+    DECLARE @AgruparPorGrupo BIT =
+        CASE
+            WHEN @agencia IS NOT NULL
+                 AND CHARINDEX(',', @agencia) = 0
+            THEN 1
+            ELSE 0
+        END;
 
     -------------------------------------------------------
     -- Declaración de variables
@@ -71,7 +83,11 @@ BEGIN
             V.NUR,
             A.Agencia,
             A.CLO,
-            V.Grupo AS Zona
+            V.Grupo AS Zona,
+            CASE
+                WHEN @AgruparPorGrupo = 1 THEN V.Grupo
+                ELSE A.CLO
+            END AS Agrupador
         FROM PWST.CATALOGOS_Rutas_Evaluables V
 
         INNER JOIN PWST.CATALOGOS_Agencias A
@@ -84,7 +100,7 @@ BEGIN
                     ',' + @agencia + ','
                 ) > 0
             )
-            AND (@zona IS NULL OR V.Grupo = @zona)
+            AND (@zona IS NULL OR EXISTS (SELECT 1 FROM STRING_SPLIT(@zona, CHAR(44)) Z WHERE LTRIM(RTRIM(Z.value)) = V.Grupo))
             AND
             (
                 @ruta IS NULL
@@ -95,21 +111,20 @@ BEGIN
                             PATINDEX('%[A-Z]%', V.NUR) + 1,
                             LEN(V.NUR)
                         )
-                    ) = @ruta
+                    ) IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@ruta, CHAR(44)))
             )
     ),
 
     dias_trabajados AS (
         SELECT
             c.Dias_Operativos,
-            d.Agencia,
-            d.CLO,
+            d.Agrupador,
             MIN(d.Dias_Trabajados) AS Dias_Trabajados
         FROM (
             SELECT
                 i.NUR,
                 r.Agencia,
-                r.CLO,
+                r.Agrupador,
                 SUM(i.Dias_Trabajados) AS Dias_Trabajados
             FROM PWST.POWERSTREET_Seguimiento_Indicadores i
             INNER JOIN rutas r
@@ -118,7 +133,8 @@ BEGIN
             GROUP BY
                 i.NUR,
                 r.Agencia,
-                r.CLO
+                r.CLO,
+                r.Agrupador
         ) d
         CROSS JOIN (
             SELECT
@@ -128,16 +144,15 @@ BEGIN
         ) c
         GROUP BY
             c.Dias_Operativos,
-            d.Agencia,
-            d.CLO
+            d.Agrupador
     )
 
     SELECT
-        CLO,
+        Agrupador AS CLO,
         Dias_Operativos,
         Dias_Trabajados
     FROM dias_trabajados
-    ORDER BY Agencia ASC, CLO ASC;
+    ORDER BY Agrupador ASC;
 
 END;
 GO

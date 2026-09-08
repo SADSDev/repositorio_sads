@@ -2,8 +2,8 @@ CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_VisitasSupervisoresAgencias
 (
     @fecha DATE,
     @agencia VARCHAR(200)=NULL,
-    @zona VARCHAR(20)=NULL,
-    @ruta VARCHAR(20) = NULL,
+    @zona VARCHAR(200)=NULL,
+    @ruta VARCHAR(200) = NULL,
     @frecuencia INT
 )
 AS
@@ -14,6 +14,10 @@ BEGIN
         REPLACE(LTRIM(RTRIM(@agencia)), ' ', ''),
         ''
     );
+
+    SET @zona = NULLIF(LTRIM(RTRIM(@zona)), '');
+
+    SET @ruta = NULLIF(LTRIM(RTRIM(@ruta)), '');
 
     -------------------------------------------------------
     -- Declaración de variables
@@ -66,7 +70,7 @@ BEGIN
             AND
             (
                 @zona IS NULL
-                OR S.Grupo = @zona
+                OR EXISTS (SELECT 1 FROM STRING_SPLIT(@zona, CHAR(44)) Z WHERE LTRIM(RTRIM(Z.value)) = S.Grupo)
             )
             AND
             (
@@ -78,7 +82,7 @@ BEGIN
                         PATINDEX('%[A-Z]%', S.NUR) + 1,
                         LEN(S.NUR)
                     )
-                ) = @ruta
+                ) IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@ruta, CHAR(44)))
             )
     ),
 

@@ -2,8 +2,8 @@ CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_VolumenMEAgencias
 (
     @fecha DATE,
     @agencia VARCHAR(200) = NULL,
-    @zona VARCHAR(20) = NULL,
-    @ruta VARCHAR(10) = NULL,
+    @zona VARCHAR(200) = NULL,
+    @ruta VARCHAR(200) = NULL,
     @frecuencia INT
 )
 AS
@@ -14,6 +14,18 @@ BEGIN
         REPLACE(LTRIM(RTRIM(@agencia)), ' ', ''),
         ''
     );
+
+    SET @zona = NULLIF(LTRIM(RTRIM(@zona)), '');
+
+    SET @ruta = NULLIF(LTRIM(RTRIM(@ruta)), '');
+
+    DECLARE @AgruparPorGrupo BIT =
+        CASE
+            WHEN @agencia IS NOT NULL
+                 AND CHARINDEX(',', @agencia) = 0
+            THEN 1
+            ELSE 0
+        END;
 
     IF @frecuencia NOT IN (1, 2, 3)
     BEGIN
@@ -207,7 +219,11 @@ BEGIN
             V.NUR,
             A.Agencia,
             A.CLO,
-            V.Grupo AS Zona
+            V.Grupo AS Zona,
+            CASE
+                WHEN @AgruparPorGrupo = 1 THEN V.Grupo
+                ELSE A.CLO
+            END AS Agrupador
         FROM PWST.CATALOGOS_Rutas_Evaluables V
         INNER JOIN PWST.CATALOGOS_Agencias A
             ON V.NUR LIKE A.Clave_NUR + ''%''
@@ -220,7 +236,7 @@ BEGIN
                     '','' + @agencia + '',''
                 ) > 0
             )
-            AND (@zona IS NULL OR V.Grupo = @zona)
+            AND (@zona IS NULL OR EXISTS (SELECT 1 FROM STRING_SPLIT(@zona, CHAR(44)) Z WHERE LTRIM(RTRIM(Z.value)) = V.Grupo))
             AND
             (
                 @ruta IS NULL
@@ -231,7 +247,7 @@ BEGIN
                         PATINDEX(''%[A-Z]%'', V.NUR) + 1,
                         LEN(V.NUR)
                     )
-                ) = @ruta
+                ) IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@ruta, CHAR(44)))
             )
     ),
 
@@ -298,7 +314,7 @@ BEGIN
     (
         SELECT DISTINCT
             M.NUR,
-            R.CLO
+            R.Agrupador
         FROM Metas M
         INNER JOIN Rutas R
             ON R.NUR = M.NUR
@@ -308,7 +324,7 @@ BEGIN
     (
         SELECT
             R.NUR,
-            R.CLO,
+            R.Agrupador,
             I.Indicador,
             CAST(CEILING(COALESCE(M.MetaPeriodo, 0)) AS INT) AS MetaPeriodo,
             CAST(COALESCE(V.Avance, 0) AS DECIMAL(18,3)) AS Avance,
@@ -324,13 +340,13 @@ BEGIN
     )
 
     SELECT
-        CLO,
+        Agrupador AS CLO,
         ' + @columnas + N'
     FROM Datos D
     GROUP BY
-        CLO
+        Agrupador
     ORDER BY
-        CLO;
+        Agrupador;
     ';
     EXEC sys.sp_executesql
         @sql,
@@ -338,12 +354,14 @@ BEGIN
           @fecha_inicio DATE,
           @fecha_fin DATE,
           @agencia VARCHAR(200),
-          @zona VARCHAR(20),
-          @ruta VARCHAR(10)',
+          @AgruparPorGrupo BIT,
+          @zona VARCHAR(200),
+          @ruta VARCHAR(200)',
         @fecha = @fecha,
         @fecha_inicio = @fecha_inicio,
         @fecha_fin = @fecha_fin,
         @agencia = @agencia,
+        @AgruparPorGrupo = @AgruparPorGrupo,
         @zona = @zona,
         @ruta = @ruta;
 END;

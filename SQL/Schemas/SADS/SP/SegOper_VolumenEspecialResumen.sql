@@ -2,21 +2,22 @@ CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_VolumenEspecialResumen
 (
     @fecha DATE,
     @agencia VARCHAR(200) = NULL,
-    @zona VARCHAR(20) = NULL,
-    @ruta VARCHAR(10) = NULL,
+    @zona VARCHAR(200) = NULL,
+    @ruta VARCHAR(200) = NULL,
     @frecuencia INT
 )
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    IF @zona IS NOT NULL AND @zona <> 'MAYOREO'
-    RETURN;
-
     SET @agencia = NULLIF(
         REPLACE(LTRIM(RTRIM(@agencia)), ' ', ''),
         ''
     );
+
+    SET @zona = NULLIF(LTRIM(RTRIM(@zona)), '');
+
+    SET @ruta = NULLIF(LTRIM(RTRIM(@ruta)), '');
 
     -------------------------------------------------------
     -- Declaración de variables

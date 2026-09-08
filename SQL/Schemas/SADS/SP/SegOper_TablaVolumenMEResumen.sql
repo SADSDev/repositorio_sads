@@ -2,8 +2,8 @@ CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_TablaVolumenMEResumen
 (
     @fecha DATE,
     @agencia VARCHAR(200) = NULL,
-    @zona VARCHAR(20) = NULL,
-    @ruta VARCHAR(10) = NULL,
+    @zona VARCHAR(200) = NULL,
+    @ruta VARCHAR(200) = NULL,
     @frecuencia INT
 )
 AS
@@ -14,6 +14,10 @@ BEGIN
         REPLACE(LTRIM(RTRIM(@agencia)), ' ', ''),
         ''
     );
+
+    SET @zona = NULLIF(LTRIM(RTRIM(@zona)), '');
+
+    SET @ruta = NULLIF(LTRIM(RTRIM(@ruta)), '');
 
     IF @frecuencia NOT IN (1, 2, 3)
     BEGIN
@@ -191,7 +195,7 @@ BEGIN
                         '','' + @agencia + '',''
                     ) > 0
                 )
-                AND (@zona IS NULL OR V.Grupo = @zona)
+                AND (@zona IS NULL OR EXISTS (SELECT 1 FROM STRING_SPLIT(@zona, CHAR(44)) Z WHERE LTRIM(RTRIM(Z.value)) = V.Grupo))
                 AND
                 (
                     @ruta IS NULL
@@ -202,7 +206,7 @@ BEGIN
                             PATINDEX(''%[A-Z]%'', V.NUR) + 1,
                             LEN(V.NUR)
                         )
-                    ) = @ruta
+                    ) IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@ruta, CHAR(44)))
                 )
         ),
 
@@ -304,8 +308,8 @@ BEGIN
             @fecha_inicio DATE,
             @fecha_fin DATE,
             @agencia VARCHAR(200),
-            @zona VARCHAR(20),
-            @ruta VARCHAR(10)',
+            @zona VARCHAR(200),
+            @ruta VARCHAR(200)',
             @fecha = @fecha,
             @fecha_inicio = @fecha_inicio,
             @fecha_fin = @fecha_fin,

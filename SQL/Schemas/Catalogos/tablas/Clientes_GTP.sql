@@ -9,9 +9,9 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE TABLE [PWST].[CATALOGOS_Clientes_GTP](
-	[Ruta] [nchar](10) NULL,
-	[Cliente] [nchar](15) NOT NULL,
-	[Nombre] [nchar](50) NULL,
+	[NUR] [varchar](20) NULL,
+	[Cliente] [varchar](20) NOT NULL,
+	[Nombre] [varchar](100) NULL,
 	[Agencia] [int] NOT NULL,
  CONSTRAINT [PK_Clientes_GTP] PRIMARY KEY CLUSTERED 
 (
