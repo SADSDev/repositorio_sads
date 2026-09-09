@@ -14,8 +14,8 @@ import pandas as pd
 #----------------------------------------------------------------
 # IMPORTS 
 #----------------------------------------------------------------
-from .procesos.procesoDatosMART import obtener_datos_modelo
-from .Schemas.request import MARTRequest
+from MART.procesos.procesoDatosMART import obtener_datos_modelo
+from MART.Schemas.request import MARTRequest
 
 #-----------------------------------
 # OBTENCION DE DATOS DEL MODELO

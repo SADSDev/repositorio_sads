@@ -18,7 +18,7 @@ from .parametros import (
     contrasena
 )
 
-from ..Core.exceptions import ErrorConexionSQL
+from Core.exceptions import ErrorConexionSQL
 
 #------------------------------------------------------------------------
 # MANEJO DE ERRORES DE CONEXIÓN SQL
