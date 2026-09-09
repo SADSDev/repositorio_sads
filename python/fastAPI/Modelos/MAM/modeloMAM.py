@@ -94,10 +94,8 @@ def modeloMAM(request: MAMRequest):
 
     df_mam = (
         df_mam
-        .drop(columns=["peso_vol",
-                        "peso_vol_me",
-                        "capacidad_base",
-                        "vol_me_esperado",
+        .drop(columns=["capacidad_base",
+                        "vol_me_esperado"
                           ])
         .assign(
             meta_vol= lambda x: redondear_conservando_total(
@@ -106,7 +104,8 @@ def modeloMAM(request: MAMRequest):
                 request.meta_neta  
             )
         )
-    )   
+    )
+       
     for marca in request.marcas_estrategicas:
         df_mam[marca.marca] = redondear_conservando_total(
             df_mam,
