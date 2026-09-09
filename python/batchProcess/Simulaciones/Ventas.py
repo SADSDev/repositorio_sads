@@ -455,7 +455,7 @@ for agencia in agencias_a_trabajar:
                     if len(dist["errores"][regimen]) == 0:
                         print(
                             f"""
-                            🚨 RÉGIMEN SIN ERRORES
+                            RÉGIMEN SIN ERRORES
                             Agencia: {agencia}
                             NUR: {ruta}
                             Fecha: {fecha}
@@ -510,10 +510,11 @@ subir_datos_sql(
     schema=schema,
     tabla_simulaciones=tabla_simulaciones)
 
+"""
 df_conversion.to_excel(
     "df_conversion.xlsx",
     index=False
 )
-
+"""
 
 
