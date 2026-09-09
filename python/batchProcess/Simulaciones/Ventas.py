@@ -13,50 +13,109 @@ from datetime import date
 from sqlalchemy import text
 from dateutil.relativedelta import relativedelta
 from tqdm import tqdm
-import random
+import os
 
 #=================================================
 #IMPORTS
 #=================================================
+
+#funciones
 from batchProcess.Simulaciones.Config.conexion_SQL import(
     manejar_error_conexion_sql,
     obtener_motor
 )
-
 from fastAPI.Modelos.MART.Schemas.request import MARTRequest
 from fastAPI.Modelos.MART.modeloMART import modeloMART
+
+#variables de entorno
+schema=os.getenv("SCHEMA")
+tabla_ventas=os.getenv("TABLA_VENTAS")
+tabla_simulaciones=os.getenv("TABLA_SIMULACIONES")
+tabla_ponderaciones=os.getenv("TABLA_POND_MODELO")
+tabla_rutas=os.getenv("TABLA_RUTAS")
+tabla_clientesgtp=os.getenv("TABLA_CLIENTESGTP")
+tabla_agencias=os.getenv("TABLA_AGENCIAS")
+tabla_metas_diarias=os.getenv("TABLA_METASDIARIAS")
 
 #======================================================
 # FUNCIONES
 #======================================================
 
+#Subir df_final a sql
+@manejar_error_conexion_sql
+def subir_datos_sql(
+    df_simulaciones: pd.DataFrame,
+    schema:str,
+    tabla_simulaciones:str)-> pd.DataFrame:
+
+    df=df_simulaciones
+    motor=obtener_motor()
+    with motor.begin() as conn:
+        # Obtener nombres de columnas exactos desde SQL Server en orden
+        sql_column_query = text("""
+            SELECT COLUMN_NAME 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = :schema AND TABLE_NAME = :tabla
+            ORDER BY ORDINAL_POSITION
+        """)
+        sql_column_result = conn.execute(
+            sql_column_query,
+            dict(schema=schema, tabla=tabla_simulaciones)
+        ).fetchall()        
+        sql_columns = [row[0] for row in sql_column_result]
+        if len(df.columns) != len(sql_columns):
+            raise ValueError(f"❌ El DataFrame tiene {len(df.columns)} columnas pero la tabla SQL tiene {len(sql_columns)}.")
+
+        #borrar datos existentes
+        conn.execute(text(f"""
+            DELETE FROM {schema}.{tabla_simulaciones} 
+            """
+            )
+        )
+        print("Registros anteriores de simulaciones eliminados")
+
+        #subir datos
+        df.to_sql(
+            name=tabla_simulaciones,
+            con=conn,
+            schema=schema,
+            if_exists="append",
+            chunksize=10000,
+            method=None,
+            index=False
+        )
+        print("✅ Datos insertados correctamente.")
+
+
 #obtencion de parametros 
 @manejar_error_conexion_sql
-def obtener_parametros_proceso():
+def obtener_parametros_proceso(
+    schema:str,
+    tabla_ponderaciones:str,
+    tabla_agencias:str):
 
     motor = obtener_motor()
-
     mes_max = pd.read_sql(
-        text("""
+        text(f"""
             SELECT MAX(Mes) AS Mes
-            FROM PWST.ANALYTICS_MAM_Ponderaciones
+            FROM {schema}.{tabla_ponderaciones}
         """),
         con=motor
     )["Mes"].iloc[0]
 
     mes_min = pd.read_sql(
-        text("""
+        text(f"""
             SELECT MIN(Mes) AS Mes
-            FROM PWST.ANALYTICS_MAM_Ponderaciones
+            FROM {schema}.{tabla_ponderaciones}
         """),
         con=motor
     )["Mes"].iloc[0]
 
     agencias_a_trabajar = pd.read_sql(
-        text("""
+        text(f"""
             SELECT DISTINCT
                 Agencia
-            FROM PWST.CATALOGOS_Rutas_Evaluables
+            FROM {schema}.{tabla_agencias}
             WHERE Agencia NOT IN (2, 3, 9, 10)
             ORDER BY Agencia ASC
         """),
@@ -69,15 +128,27 @@ def obtener_parametros_proceso():
 
 #obtencion de df´s extras de sql
 @manejar_error_conexion_sql
-def obtener_dfs_sql(fecha_inicio:date, fecha_fin:date):
+def obtener_dfs_sql(
+    fecha_inicio:date, 
+    fecha_fin:date,
+    fecha_hoy:date,
+    schema:str,
+    tabla_rutas:str,
+    tabla_ventas:str,
+    tabla_clietesgtp:str,
+    tabla_metas_diarias:str,
+    tabla_agencias:str):
 
     motor = obtener_motor()
     df_venta_diaria = pd.read_sql(
-        text("""
+        text(f"""
             WITH rutas AS (
-                SELECT
-                    NUR
-                FROM PWST.CATALOGOS_Rutas_Evaluables
+                SELECT DISTINCT
+                    R.NUR
+                FROM {schema}.{tabla_rutas} R
+                INNER JOIN {schema}.{tabla_metas_diarias} M
+                    ON R.NUR = M.NUR
+                WHERE M.Indicador = 'VOLUMEN'
             ),
 
             ventas_diarias AS (
@@ -92,10 +163,10 @@ def obtener_dfs_sql(fecha_inicio:date, fecha_fin:date):
                         END
                     ) AS Cantidad
 
-                FROM PWST.POWERSTREET_Venta_Diaria V
+                FROM {schema}.{tabla_ventas} V
                 INNER JOIN rutas R
                     ON V.NUR = R.NUR
-                LEFT JOIN PWST.CATALOGOS_Clientes_GTP B
+                LEFT JOIN {schema}.{tabla_clietesgtp} B
                     ON V.Cliente = B.Cliente
                 WHERE V.Fecha BETWEEN :fecha_inicio AND :fecha_fin
 
@@ -124,73 +195,60 @@ def obtener_dfs_sql(fecha_inicio:date, fecha_fin:date):
         params={"fecha_inicio":fecha_inicio,"fecha_fin":fecha_fin}
     )
 
-    df_claves_nur=pd.read_sql(
-        text("""
-        SELECT
-            Agencia,
-            Clave_NUR    
-        FROM PWST.CATALOGOS_Agencias
-        """),
-        con=motor
-    )
-    motor.dispose()
-    return df_venta_diaria, df_claves_nur
-
-@manejar_error_conexion_sql
-def obtener_meta_volumen(fecha_inicio: date):
-    motor = obtener_motor()
-
-    df = pd.read_sql(
-        text("""
+    df_meta_volumen_mensual = pd.read_sql(
+        text(f"""
             SELECT
                 Fecha,
                 ((DATEPART(WEEKDAY, Fecha) + @@DATEFIRST - 2) % 7) + 1 AS Dia_Semana,
-                (
-                    DAY(Fecha)
-                    +
-                    (
-                        (
-                            DATEPART(
-                                WEEKDAY,
-                                DATEFROMPARTS(
-                                    YEAR(Fecha),
-                                    MONTH(Fecha),
-                                    1
-                                )
-                            )
-                            + @@DATEFIRST - 2
-                        ) % 7
-                    )
-                    - 1
-                ) / 7 + 1 AS Semana_Mes,
                 NUR,
                 Valor_Meta AS Meta_Volumen
-            FROM PWST.SADS_SegOper_Metas
+            FROM {schema}.{tabla_metas_diarias}
             WHERE Fecha >= DATEFROMPARTS(
-                YEAR(:fecha_inicio),
-                MONTH(:fecha_inicio),
+                YEAR(:fecha_hoy),
+                MONTH(:fecha_hoy),
                 1
             )
             AND Fecha < DATEADD(
                 DAY,
                 1,
-                EOMONTH(:fecha_inicio)
+                EOMONTH(:fecha_hoy)
             )
+            AND Indicador='VOLUMEN'
             ORDER BY
                 Fecha ASC,
                 NUR ASC;
         """),
         con=motor,
-        params={"fecha_inicio": fecha_inicio}
+        params={"fecha_hoy": fecha_hoy}
+    )
+
+    df_claves_nur=pd.read_sql(
+        text(f"""
+        SELECT
+            Agencia,
+            Clave_NUR    
+        FROM {schema}.{tabla_agencias}
+        """),
+        con=motor
     )
     motor.dispose()
-    return df
-#=====================================================
+    return df_venta_diaria, df_claves_nur, df_meta_volumen_mensual
+
+
+#==========================================================
 # VARIABLES, PARAMETROS Y DATOS
-#=====================================================
+#==========================================================
 
 #parametros
-mes_min, mes_max, agencias_a_trabajar = obtener_parametros_proceso()
+fecha_hoy = date(2026, 8, 1)
+#fecha_hoy=date.today()+relativedelta(day=1)
+
+mes_min, mes_max, agencias_a_trabajar = obtener_parametros_proceso(
+    schema=schema,
+    tabla_ponderaciones=tabla_ponderaciones,
+    tabla_agencias=tabla_agencias
+)
+
 cortes_regimen = {
     "dia muy malo": 0.05,
     "dia malo": 0.15,
@@ -200,25 +258,29 @@ tamaño_muestra=100
 
 
 #variables
-fecha_hoy = date(2026, 8, 1)
-#fecha_hoy=date.today()+relativedelta(day=1)
 mes_inicio_proceso=fecha_hoy+relativedelta(day=1, months=-mes_max) 
 mes_fin_proceso= fecha_hoy+relativedelta(day=1, months=-mes_min)
 fecha_inicio=mes_inicio_proceso
 fecha_fin= mes_fin_proceso+relativedelta(day=31)
-
 meses = pd.date_range(
     start=mes_inicio_proceso,
     end=mes_fin_proceso,
-    freq="MS"
-)
+    freq="MS")
 
-#datos
-df_venta_diaria, df_claves_nur = obtener_dfs_sql(fecha_inicio=fecha_inicio, fecha_fin=fecha_fin)
-df_meta_volumen_mensual = obtener_meta_volumen(fecha_inicio=fecha_hoy)
-
+#df´s
+df_venta_diaria, df_claves_nur, df_meta_volumen_mensual = obtener_dfs_sql(
+    fecha_inicio=fecha_inicio,
+    fecha_fin=fecha_fin,
+    fecha_hoy=fecha_hoy,
+    schema=schema,
+    tabla_rutas=tabla_rutas,
+    tabla_ventas=tabla_ventas,
+    tabla_clietesgtp=tabla_clientesgtp,
+    tabla_metas_diarias=tabla_metas_diarias,
+    tabla_agencias=tabla_agencias)
 df_venta_diaria["Fecha"] = pd.to_datetime(df_venta_diaria["Fecha"])
 df_meta_volumen_mensual["Fecha"]=pd.to_datetime(df_meta_volumen_mensual["Fecha"])
+
 #==========================================================
 # PROCESO
 #==========================================================
@@ -237,7 +299,8 @@ df_mart_final = pd.concat(resultados,ignore_index=True)
 df_mart_final["Fecha"] = pd.to_datetime(df_mart_final["Fecha"])
 
 #obtencion de error entre peso real y peso esperado
-df_simulaciones=(
+# y clasificacion de regimen de error por nur
+df_simulaciones = (
     df_mart_final
     .merge(
         df_venta_diaria,
@@ -245,13 +308,38 @@ df_simulaciones=(
         how="left"
     )
     .assign(
-        Error=lambda x: x["Peso_Real"]/x["Peso_Esperado"],
+        Error=lambda x: x["Peso_Real"] / x["Peso_Esperado"],
+
+        Q05=lambda x:
+            x.groupby("NUR")["Error"]
+             .transform(
+                 lambda s: s.quantile(
+                     cortes_regimen["dia muy malo"]
+                 )
+             ),
+
+        Q15=lambda x:
+            x.groupby("NUR")["Error"]
+             .transform(
+                 lambda s: s.quantile(
+                     cortes_regimen["dia malo"]
+                 )
+             ),
+
+        Q80=lambda x:
+            x.groupby("NUR")["Error"]
+             .transform(
+                 lambda s: s.quantile(
+                     cortes_regimen["dia normal"]
+                 )
+             ),
+
         Regimen=lambda x: np.select(
             [
                 x["Error"].isna(),
-                x["Error"] <= x["Error"].quantile(cortes_regimen["dia muy malo"]),
-                x["Error"] <= x["Error"].quantile(cortes_regimen["dia malo"]),
-                x["Error"] <= x["Error"].quantile(cortes_regimen["dia normal"])
+                x["Error"] <= x["Q05"],
+                x["Error"] <= x["Q15"],
+                x["Error"] <= x["Q80"]
             ],
             [
                 "dia sin operacion",
@@ -260,14 +348,16 @@ df_simulaciones=(
                 "dia normal"
             ],
             default="dia bueno"
-        ) 
+        )
     )
+    .drop(columns=["Q05", "Q15", "Q80"])
 )
+"""
 df_simulaciones.to_excel(
     "df_simulaciones.xlsx",
     index=False
 )
-
+"""
 
 # simulación bootstrap
 resultados_bootstrap = []
@@ -390,44 +480,13 @@ for agencia in agencias_a_trabajar:
                 })
 
 df_bootstrap = pd.DataFrame(resultados_bootstrap)
+"""
 df_bootstrap.to_excel(
     "df_bootstrap.xlsx",
     index=False
 )
+"""
 
-print("BOOTSTRAP:")
-print(df_bootstrap.shape)
-print(df_bootstrap[["NUR", "Fecha", "Error"]].head())
-
-print("\nMETA:")
-print(df_meta_volumen_mensual.shape)
-print(df_meta_volumen_mensual[["NUR", "Fecha", "Meta_Volumen"]].head())
-
-print("\nTIPOS:")
-print(df_bootstrap[["NUR", "Fecha"]].dtypes)
-print(df_meta_volumen_mensual[["NUR", "Fecha"]].dtypes)
-
-df_prueba = df_bootstrap.merge(
-    df_meta_volumen_mensual,
-    on=["NUR", "Fecha"],
-    how="left"
-)
-
-print("\nDESPUÉS DEL MERGE:")
-print(df_prueba.shape)
-
-print("\nMETA ENCONTRADA:")
-print(df_prueba["Meta_Volumen"].notna().sum())
-
-print("\nMETA NO ENCONTRADA:")
-print(df_prueba["Meta_Volumen"].isna().sum())
-
-print(df_prueba[[
-    "NUR",
-    "Fecha",
-    "Error",
-    "Meta_Volumen"
-]].head(20))
 
 #Conversion de errores a paquetes
 df_conversion = (
@@ -435,20 +494,26 @@ df_conversion = (
     .merge(
         df_meta_volumen_mensual,
         on=["NUR", "Fecha"],
-        how="left"
+        how="inner",
+        validate="many_to_one"
     )
     .assign(
         Volumen_Simulado=lambda x:
-            x["Meta_Volumen"] * x["Error"]
+            (x["Meta_Volumen"] * x["Error"]).round(6)
     )
-    .groupby(
-        ["Simulacion", "NUR", "Semana_Mes"],
-        as_index=False
-    )["Volumen_Simulado"]
-    .sum()
-)   
+    [["Simulacion", "Agencia", "NUR", "Fecha", "Volumen_Simulado"]]
+)
+
+#subir a sql
+subir_datos_sql(
+    df_simulaciones=df_conversion,
+    schema=schema,
+    tabla_simulaciones=tabla_simulaciones)
 
 df_conversion.to_excel(
     "df_conversion.xlsx",
     index=False
 )
+
+
+
