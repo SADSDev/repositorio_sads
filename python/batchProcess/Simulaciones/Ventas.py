@@ -46,7 +46,8 @@ tabla_metas_diarias=os.getenv("TABLA_METASDIARIAS")
 def subir_datos_sql(
     df_simulaciones: pd.DataFrame,
     schema:str,
-    tabla_simulaciones:str)-> pd.DataFrame:
+    tabla_simulaciones:str,
+    nur_a_borrar:str)-> pd.DataFrame:
 
     df=df_simulaciones
     motor=obtener_motor()
@@ -66,13 +67,14 @@ def subir_datos_sql(
         if len(df.columns) != len(sql_columns):
             raise ValueError(f"❌ El DataFrame tiene {len(df.columns)} columnas pero la tabla SQL tiene {len(sql_columns)}.")
 
-        #borrar datos existentes
+        #borrar datos existentes del nur
         conn.execute(text(f"""
-            DELETE FROM {schema}.{tabla_simulaciones} 
+            DELETE FROM {schema}.{tabla_simulaciones}
+            WHERE NUR= '{nur_a_borrar}'
             """
             )
         )
-        print("Registros anteriores de simulaciones eliminados")
+        print(f"Registros anteriores de simulaciones de {nur_a_borrar} eliminados")
 
         #subir datos
         df.to_sql(
@@ -131,12 +133,10 @@ def obtener_parametros_proceso(
 def obtener_dfs_sql(
     fecha_inicio:date, 
     fecha_fin:date,
-    fecha_hoy:date,
     schema:str,
     tabla_rutas:str,
     tabla_ventas:str,
     tabla_clietesgtp:str,
-    tabla_metas_diarias:str,
     tabla_agencias:str):
 
     motor = obtener_motor()
@@ -144,11 +144,8 @@ def obtener_dfs_sql(
         text(f"""
             WITH rutas AS (
                 SELECT DISTINCT
-                    R.NUR
-                FROM {schema}.{tabla_rutas} R
-                INNER JOIN {schema}.{tabla_metas_diarias} M
-                    ON R.NUR = M.NUR
-                WHERE M.Indicador = 'VOLUMEN'
+                    NUR
+                FROM {schema}.{tabla_rutas} 
             ),
 
             ventas_diarias AS (
@@ -195,33 +192,6 @@ def obtener_dfs_sql(
         params={"fecha_inicio":fecha_inicio,"fecha_fin":fecha_fin}
     )
 
-    df_meta_volumen_mensual = pd.read_sql(
-        text(f"""
-            SELECT
-                Fecha,
-                ((DATEPART(WEEKDAY, Fecha) + @@DATEFIRST - 2) % 7) + 1 AS Dia_Semana,
-                NUR,
-                Valor_Meta AS Meta_Volumen
-            FROM {schema}.{tabla_metas_diarias}
-            WHERE Fecha >= DATEFROMPARTS(
-                YEAR(:fecha_hoy),
-                MONTH(:fecha_hoy),
-                1
-            )
-            AND Fecha < DATEADD(
-                DAY,
-                1,
-                EOMONTH(:fecha_hoy)
-            )
-            AND Indicador='VOLUMEN'
-            ORDER BY
-                Fecha ASC,
-                NUR ASC;
-        """),
-        con=motor,
-        params={"fecha_hoy": fecha_hoy}
-    )
-
     df_claves_nur=pd.read_sql(
         text(f"""
         SELECT
@@ -232,7 +202,7 @@ def obtener_dfs_sql(
         con=motor
     )
     motor.dispose()
-    return df_venta_diaria, df_claves_nur, df_meta_volumen_mensual
+    return df_venta_diaria, df_claves_nur
 
 
 #==========================================================
@@ -240,8 +210,8 @@ def obtener_dfs_sql(
 #==========================================================
 
 #parametros
-fecha_hoy = date(2026, 8, 1)
-#fecha_hoy=date.today()+relativedelta(day=1)
+#fecha_hoy = date(2026, 8, 1)
+fecha_hoy=date.today()+relativedelta(day=1)
 
 mes_min, mes_max, agencias_a_trabajar = obtener_parametros_proceso(
     schema=schema,
@@ -254,7 +224,7 @@ cortes_regimen = {
     "dia malo": 0.15,
     "dia normal": 0.80
 }
-tamaño_muestra=100
+tamaño_muestra=100000
 
 
 #variables
@@ -268,18 +238,15 @@ meses = pd.date_range(
     freq="MS")
 
 #df´s
-df_venta_diaria, df_claves_nur, df_meta_volumen_mensual = obtener_dfs_sql(
+df_venta_diaria, df_claves_nur = obtener_dfs_sql(
     fecha_inicio=fecha_inicio,
     fecha_fin=fecha_fin,
-    fecha_hoy=fecha_hoy,
     schema=schema,
     tabla_rutas=tabla_rutas,
     tabla_ventas=tabla_ventas,
     tabla_clietesgtp=tabla_clientesgtp,
-    tabla_metas_diarias=tabla_metas_diarias,
     tabla_agencias=tabla_agencias)
 df_venta_diaria["Fecha"] = pd.to_datetime(df_venta_diaria["Fecha"])
-df_meta_volumen_mensual["Fecha"]=pd.to_datetime(df_meta_volumen_mensual["Fecha"])
 
 #==========================================================
 # PROCESO
@@ -297,6 +264,10 @@ for agencia in agencias_a_trabajar:
 
 df_mart_final = pd.concat(resultados,ignore_index=True)
 df_mart_final["Fecha"] = pd.to_datetime(df_mart_final["Fecha"])
+df_mart_final.to_excel(
+    "df_mart.xlsx",
+    index=False
+)
 
 #obtencion de error entre peso real y peso esperado
 # y clasificacion de regimen de error por nur
@@ -352,6 +323,8 @@ df_simulaciones = (
     )
     .drop(columns=["Q05", "Q15", "Q80"])
 )
+
+
 """
 df_simulaciones.to_excel(
     "df_simulaciones.xlsx",
@@ -360,23 +333,19 @@ df_simulaciones.to_excel(
 """
 
 # simulación bootstrap
-resultados_bootstrap = []
 for agencia in agencias_a_trabajar:
 
-    # Fechas del mes a simular
     fechas = pd.date_range(
         start=fecha_hoy,
         end=fecha_hoy + relativedelta(day=31),
         freq="D"
     )
 
-    # Obtener clave de la agencia
     clave_nur = df_claves_nur.loc[
         df_claves_nur["Agencia"] == agencia,
         "Clave_NUR"
     ].iloc[0]
 
-    # Obtener NURs de la agencia
     rutas = (
         df_simulaciones.loc[
             df_simulaciones["NUR"].str.contains(
@@ -388,15 +357,15 @@ for agencia in agencias_a_trabajar:
         .unique()
     )
 
-    # Filtrar simulaciones de la agencia
     df_simulaciones_agencia = df_simulaciones[
         df_simulaciones["NUR"].isin(rutas)
     ]
-
+    
     # ==========================================
-    # CONSTRUIR DISTRIBUCIONES HISTÓRICAS
+    # DISTRIBUCIONES HISTÓRICAS
     # ==========================================
     distribuciones = {}
+
     for ruta in rutas:
 
         for dia_semana in range(1, 7):
@@ -426,93 +395,95 @@ for agencia in agencias_a_trabajar:
             }
 
     # ==========================================
-    # BOOTSTRAP
+    # BOOTSTRAP POR NUR
     # ==========================================
     for ruta in rutas:
 
-        for i in tqdm(
-            range(1, tamaño_muestra + 1),
+        resultados_ruta = []
+
+        for fecha in tqdm(
+            fechas,
             desc=f"Bootstrap {agencia} - {ruta}"
         ):
 
-            for fecha in fechas:
+            dia_semana = fecha.dayofweek + 1
 
-                dia_semana = fecha.dayofweek + 1
+            if dia_semana == 7:
+                continue
 
-                if dia_semana == 7:
+            dist = distribuciones[(ruta, dia_semana)]
+
+            regimenes = np.random.choice(
+                dist["regimenes"],
+                size=tamaño_muestra,
+                p=dist["probabilidades"]
+            )
+
+            errores_simulados = np.zeros(tamaño_muestra)
+
+            for regimen in dist["regimenes"]:
+
+                mascara = regimenes == regimen
+                cantidad = mascara.sum()
+
+
+                if cantidad == 0:
                     continue
 
-                dist = distribuciones[(ruta, dia_semana)]
-                
-                regimen = np.random.choice(
-                    dist["regimenes"],
-                    p=dist["probabilidades"]
-                )
-
                 if regimen == "dia sin operacion":
-                    error = 0
-                else:
-                    if len(dist["errores"][regimen]) == 0:
-                        print(
-                            f"""
-                            RÉGIMEN SIN ERRORES
-                            Agencia: {agencia}
-                            NUR: {ruta}
-                            Fecha: {fecha}
-                            Día semana: {dia_semana}
-                            Régimen: {regimen}
-                            """
-                        )
-                        raise ValueError("Régimen seleccionado sin errores históricos")
 
-                    error = np.random.choice(
-                        dist["errores"][regimen]
+                    errores_simulados[mascara] = 0
+
+                else:
+
+                    errores_historicos = dist["errores"][regimen]
+
+                    if len(errores_historicos) == 0:
+                        raise ValueError(
+                            f"Régimen sin errores históricos: "
+                            f"Agencia={agencia}, "
+                            f"NUR={ruta}, "
+                            f"Fecha={fecha}, "
+                            f"Régimen={regimen}"
+                        )
+
+                    errores_simulados[mascara] = np.random.choice(
+                        errores_historicos,
+                        size=cantidad
                     )
 
-                resultados_bootstrap.append({
+            resultados_ruta.append(
+                pd.DataFrame({
+                    "Simulacion": np.arange(1, tamaño_muestra + 1),
                     "Agencia": agencia,
-                    "Simulacion": i,
                     "NUR": ruta,
                     "Fecha": fecha,
-                    "Dia_Semana": dia_semana,
-                    "Regimen": regimen,
-                    "Error": error
+                    "Error": errores_simulados
                 })
+            )
 
-df_bootstrap = pd.DataFrame(resultados_bootstrap)
+        df_ruta = pd.concat(
+            resultados_ruta,
+            ignore_index=True
+        ).assign(
+            Volumen_Simulado=np.nan
+        )
+
+        subir_datos_sql(
+            df_simulaciones=df_ruta,
+            schema=schema,
+            tabla_simulaciones=tabla_simulaciones,
+            nur_a_borrar=ruta
+        )
+
+        del resultados_ruta
+        del df_ruta
+
+#FIN
+
 """
 df_bootstrap.to_excel(
     "df_bootstrap.xlsx",
-    index=False
-)
-"""
-
-
-#Conversion de errores a paquetes
-df_conversion = (
-    df_bootstrap
-    .merge(
-        df_meta_volumen_mensual,
-        on=["NUR", "Fecha"],
-        how="inner",
-        validate="many_to_one"
-    )
-    .assign(
-        Volumen_Simulado=lambda x:
-            (x["Meta_Volumen"] * x["Error"]).round(6)
-    )
-    [["Simulacion", "Agencia", "NUR", "Fecha", "Volumen_Simulado"]]
-)
-
-#subir a sql
-subir_datos_sql(
-    df_simulaciones=df_conversion,
-    schema=schema,
-    tabla_simulaciones=tabla_simulaciones)
-
-"""
-df_conversion.to_excel(
-    "df_conversion.xlsx",
     index=False
 )
 """

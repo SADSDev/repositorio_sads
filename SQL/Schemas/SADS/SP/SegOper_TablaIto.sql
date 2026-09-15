@@ -73,6 +73,7 @@ BEGIN
     (
         SELECT DISTINCT
             V.NUR,
+            V.Grupo,
             A.Agencia,
             A.CLO,
             V.Grupo AS Zona
@@ -113,6 +114,7 @@ BEGIN
             SELECT
                 A.*,
                 R.CLO AS CLO_Ruta,
+                R.Grupo AS Grupo_Ruta,
                 ROW_NUMBER() OVER
                 (
                     PARTITION BY
@@ -142,6 +144,7 @@ BEGIN
     (
         SELECT
             NUR,
+            Grupo_Ruta AS Grupo,
             CLO_Ruta AS CLO,
             Fecha,
             MAX(Visitas_Totales) AS Visitas_Totales,
@@ -157,6 +160,7 @@ BEGIN
         FROM ito_filtrado
         GROUP BY
             NUR,
+            Grupo_Ruta,
             CLO_Ruta,
             Fecha
     ),
@@ -165,6 +169,7 @@ BEGIN
     (
         SELECT
             NUR,
+            Grupo,
             CLO,
             SUM(Visitas_Totales) AS Visitas_Totales,
 
@@ -189,6 +194,7 @@ BEGIN
         FROM ito_por_dia
         GROUP BY
             NUR,
+            Grupo,
             CLO
     )
 

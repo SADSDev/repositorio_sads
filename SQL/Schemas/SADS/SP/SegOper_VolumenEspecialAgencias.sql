@@ -18,21 +18,20 @@ BEGIN
     SET @zona = NULLIF(LTRIM(RTRIM(@zona)), '');
     SET @ruta = NULLIF(LTRIM(RTRIM(@ruta)), '');
 
-    -------------------------------------------------------
-    -- Declaración de variables
-    -------------------------------------------------------
+    DECLARE @UnaAgencia BIT =
+        CASE
+            WHEN @agencia IS NOT NULL
+                 AND CHARINDEX(',', @agencia) = 0
+            THEN 1
+            ELSE 0
+        END;
 
     DECLARE @FechaInicioPeriodo DATE;
-
-    -------------------------------------------------------
-    -- Definir inicio del periodo según frecuencia
-    -------------------------------------------------------
 
     IF @frecuencia = 1
     BEGIN
         SET @FechaInicioPeriodo = @fecha;
     END
-
     ELSE IF @frecuencia = 2
     BEGIN
         SET @FechaInicioPeriodo =
@@ -43,7 +42,6 @@ BEGIN
                         @fecha
                      ) < DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
                 THEN DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
-
                 ELSE DATEADD(
                         DAY,
                         -((DATEDIFF(DAY, '19000101', @fecha)) % 7),
@@ -51,38 +49,82 @@ BEGIN
                      )
             END;
     END
-
     ELSE IF @frecuencia = 3
     BEGIN
         SET @FechaInicioPeriodo =
-            DATEFROMPARTS(
-                YEAR(@fecha),
-                MONTH(@fecha),
-                1
-            );
+            DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1);
     END
-
     ELSE
     BEGIN
         THROW 50001, 'La frecuencia debe ser 1, 2 o 3.', 1;
     END;
 
-    -------------------------------------------------------
-    -- Proceso
-    -------------------------------------------------------
+    ;WITH RutasSector AS
+    (
+        SELECT DISTINCT
+            V.NUR,
+            A.Agencia,
+            A.CLO,
+            V.Grupo AS Zona
+        FROM PWST.CATALOGOS_Rutas_Evaluables V
+        INNER JOIN PWST.CATALOGOS_Agencias A
+            ON V.NUR LIKE A.Clave_NUR + '%'
+        WHERE
+            @UnaAgencia = 1
+            AND CHARINDEX(
+                ',' + CONVERT(VARCHAR(10), A.Agencia) + ',',
+                ',' + @agencia + ','
+            ) > 0
+            AND
+            (
+                @zona IS NULL
+                OR EXISTS
+                (
+                    SELECT 1
+                    FROM STRING_SPLIT(@zona, CHAR(44)) Z
+                    WHERE LTRIM(RTRIM(Z.value)) = V.Grupo
+                )
+            )
+            AND
+            (
+                @ruta IS NULL
+                OR CONCAT(
+                    'R',
+                    SUBSTRING(
+                        V.NUR,
+                        PATINDEX('%[A-Z]%', V.NUR) + 1,
+                        LEN(V.NUR)
+                    )
+                ) IN
+                (
+                    SELECT LTRIM(RTRIM(value))
+                    FROM STRING_SPLIT(@ruta, CHAR(44))
+                )
+            )
+    ),
 
-    ;WITH metas AS
+    MetasGlobales AS
     (
         SELECT
-            A.CLO,
             M.Agencia,
-            M.Indicador,
-            M.Valor_Meta
+            MAX(A.CLO) AS CLO,
+            SUM(
+                CASE
+                    WHEN M.Indicador = 'VOLUMEN GTP'
+                        THEN M.Valor_Meta
+                    ELSE 0
+                END
+            ) AS Meta_GTP,
+            SUM(
+                CASE
+                    WHEN M.Indicador = 'VOLUMEN MM'
+                        THEN M.Valor_Meta
+                    ELSE 0
+                END
+            ) AS Meta_MM
         FROM PWST.SADS_SegOper_MetasAgencia M
-
         LEFT JOIN PWST.CATALOGOS_Agencias A
-            ON M.Agencia = A.Agencia
-
+            ON A.Agencia = M.Agencia
         WHERE
             (
                 @agencia IS NULL
@@ -96,50 +138,40 @@ BEGIN
                 MONTH(@fecha),
                 1
             )
-            AND M.Indicador IN (
-                'VOLUMEN GTP',
-                'VOLUMEN MM'
-            )
+            AND M.Indicador IN ('VOLUMEN GTP', 'VOLUMEN MM')
+        GROUP BY
+            M.Agencia
     ),
 
-    ventas_filtradas AS
+    VentasGlobales AS
     (
         SELECT
             VD.NUR,
             A.Agencia,
-            VD.Cliente,
             VD.Cantidad,
-
             CASE
-                WHEN GTP.Cliente IS NULL
-                    THEN 0
+                WHEN GTP.Cliente IS NULL THEN 0
                 ELSE 1
             END AS EsGTP,
-
             CASE
-                WHEN V.NUR IS NULL
-                    THEN 0
+                WHEN V.NUR IS NULL THEN 0
                 ELSE 1
             END AS EsMayoreo
-
         FROM PWST.POWERSTREET_Venta_Diaria VD
-
         LEFT JOIN PWST.CATALOGOS_Clientes_GTP GTP
             ON GTP.Cliente = VD.Cliente
-
         LEFT JOIN PWST.CATALOGOS_Agencias A
             ON LEFT(
                 VD.NUR,
                 PATINDEX('%[A-Z]%', VD.NUR) - 1
             ) = A.Clave_NUR
-
         LEFT JOIN PWST.CATALOGOS_Vendedores V
             ON V.NUR = VD.NUR
             AND V.Grupo = 'MAYOREO'
-
         WHERE
             VD.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
-            AND (
+            AND
+            (
                 @agencia IS NULL
                 OR CHARINDEX(
                     ',' + CONVERT(VARCHAR(10), A.Agencia) + ',',
@@ -148,158 +180,151 @@ BEGIN
             )
     ),
 
-    avances AS
+    AvancesGlobales AS
     (
         SELECT
             Agencia,
-
-            SUM(
-                CASE
-                    WHEN EsGTP = 1
-                        THEN Cantidad
-                    ELSE 0
-                END
-            ) AS Avance_GTP,
-
-            SUM(
-                CASE
-                    WHEN EsMayoreo = 1
-                        THEN Cantidad
-                    ELSE 0
-                END
-            ) AS Avance_MM
-
-        FROM ventas_filtradas
-
+            SUM(CASE WHEN EsGTP = 1 THEN Cantidad ELSE 0 END) AS Avance_GTP,
+            SUM(CASE WHEN EsMayoreo = 1 THEN Cantidad ELSE 0 END) AS Avance_MM
+        FROM VentasGlobales
         GROUP BY Agencia
     ),
 
-    resultado AS
+    AvancesSector AS
     (
         SELECT
-            M.Agencia,
-            M.CLO,
-            M.Indicador,
-            CAST(M.Valor_Meta AS INT) AS Valor_Meta,
+            R.Agencia,
+            R.Zona,
+            SUM(
+                CASE
+                    WHEN GTP.Cliente IS NOT NULL THEN VD.Cantidad
+                    ELSE 0
+                END
+            ) AS Avance_GTP,
+            SUM(
+                CASE
+                    WHEN V.NUR IS NOT NULL THEN VD.Cantidad
+                    ELSE 0
+                END
+            ) AS Avance_MM
+        FROM RutasSector R
+        INNER JOIN PWST.POWERSTREET_Venta_Diaria VD
+            ON VD.NUR = R.NUR
+        LEFT JOIN PWST.CATALOGOS_Clientes_GTP GTP
+            ON GTP.Cliente = VD.Cliente
+        LEFT JOIN PWST.CATALOGOS_Vendedores V
+            ON V.NUR = VD.NUR
+            AND V.Grupo = 'MAYOREO'
+        WHERE VD.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+        GROUP BY
+            R.Agencia,
+            R.Zona
+    ),
 
-            CASE
-                WHEN M.Indicador = 'VOLUMEN GTP'
-                    THEN ISNULL(A.Avance_GTP, 0)
-
-                WHEN M.Indicador = 'VOLUMEN MM'
-                    THEN ISNULL(A.Avance_MM, 0)
-            END AS Avance
-
-        FROM metas M
-
-        LEFT JOIN avances A
-            ON A.Agencia = M.Agencia
+    Sectores AS
+    (
+        SELECT DISTINCT
+            Agencia,
+            Zona
+        FROM RutasSector
     )
 
-    -------------------------------------------------------
-    -- Una fila por agencia
-    -------------------------------------------------------
-
     SELECT
-        Agencia,
-        MAX(CLO) AS CLO,
-
-        ---------------------------------------------------
-        -- GTP
-        ---------------------------------------------------
-
-        MAX(
-            CASE
-                WHEN Indicador = 'VOLUMEN GTP'
-                    THEN Valor_Meta
-            END
-        ) AS Meta_GTP,
-
+        S.Agencia,
+        S.Zona AS CLO,
+        CAST(M.Meta_GTP AS INT) AS Meta_GTP,
+        CAST(COALESCE(ASec.Avance_GTP, 0) AS DECIMAL(10,3)) AS Avance_GTP,
         CAST(
-            MAX(
-                CASE
-                    WHEN Indicador = 'VOLUMEN GTP'
-                        THEN Avance
-                END
-            ) 
-            AS DECIMAL(10,3)
-        ) AS Avance_GTP,
-
-        CAST(
-            MAX(
-                CASE
-                    WHEN Indicador = 'VOLUMEN GTP'
-                        THEN Avance * 1.0
-                             / NULLIF(Valor_Meta, 0)
-                END
-            )
+            COALESCE(ASec.Avance_GTP, 0) * 1.0
+            / NULLIF(M.Meta_GTP, 0)
             AS DECIMAL(10,4)
         ) AS Alcance_GTP,
-
         CAST(
-            MAX(
-                CASE
-                    WHEN Indicador = 'VOLUMEN GTP'
-                        THEN
-                            CASE
-                                WHEN Avance > Valor_Meta
-                                    THEN Avance - Valor_Meta
-                                ELSE 0
-                            END
-                END
-            )
+            CASE
+                WHEN COALESCE(AG.Avance_GTP, 0) = 0 THEN 0
+                ELSE
+                    CASE
+                        WHEN AG.Avance_GTP > M.Meta_GTP
+                            THEN AG.Avance_GTP - M.Meta_GTP
+                        ELSE 0
+                    END
+                    * COALESCE(ASec.Avance_GTP, 0) * 1.0
+                    / NULLIF(AG.Avance_GTP, 0)
+            END
             AS DECIMAL(10,3)
         ) AS Excedente_GTP,
-        ---------------------------------------------------
-        -- Medio Mayoreo
-        ---------------------------------------------------
-
-        MAX(
-            CASE
-                WHEN Indicador = 'VOLUMEN MM'
-                    THEN Valor_Meta
-            END
-        ) AS Meta_MM,
-
+        CAST(M.Meta_MM AS INT) AS Meta_MM,
+        CAST(COALESCE(ASec.Avance_MM, 0) AS DECIMAL(10,3)) AS Avance_MM,
         CAST(
-            MAX(
-                CASE
-                    WHEN Indicador = 'VOLUMEN MM'
-                        THEN Avance
-                END
-            )
-            AS DECIMAL(10,3)
-        ) AS Avance_MM,
-
-        CAST(
-            MAX(
-                CASE
-                    WHEN Indicador = 'VOLUMEN MM'
-                        THEN Avance * 1.0
-                             / NULLIF(Valor_Meta, 0)
-                END
-            )
+            COALESCE(ASec.Avance_MM, 0) * 1.0
+            / NULLIF(M.Meta_MM, 0)
             AS DECIMAL(10,4)
         ) AS Alcance_MM,
-
         CAST(
-            MAX(
-                CASE
-                    WHEN Indicador = 'VOLUMEN MM'
-                        THEN
-                            CASE
-                                WHEN Avance > Valor_Meta
-                                    THEN Avance - Valor_Meta
-                                ELSE 0
-                            END
-                END
-            )
-            AS DECIMAL(10,3) 
+            CASE
+                WHEN COALESCE(AG.Avance_MM, 0) = 0 THEN 0
+                ELSE
+                    CASE
+                        WHEN AG.Avance_MM > M.Meta_MM
+                            THEN AG.Avance_MM - M.Meta_MM
+                        ELSE 0
+                    END
+                    * COALESCE(ASec.Avance_MM, 0) * 1.0
+                    / NULLIF(AG.Avance_MM, 0)
+            END
+            AS DECIMAL(10,3)
         ) AS Excedente_MM
-    FROM resultado
-    GROUP BY
-        Agencia
+    FROM Sectores S
+    INNER JOIN MetasGlobales M
+        ON M.Agencia = S.Agencia
+    LEFT JOIN AvancesSector ASec
+        ON ASec.Agencia = S.Agencia
+        AND ASec.Zona = S.Zona
+    LEFT JOIN AvancesGlobales AG
+        ON AG.Agencia = S.Agencia
+    WHERE @UnaAgencia = 1
+
+    UNION ALL
+
+    SELECT
+        M.Agencia,
+        M.CLO,
+        CAST(M.Meta_GTP AS INT) AS Meta_GTP,
+        CAST(COALESCE(AG.Avance_GTP, 0) AS DECIMAL(10,3)) AS Avance_GTP,
+        CAST(
+            AG.Avance_GTP * 1.0
+            / NULLIF(M.Meta_GTP, 0)
+            AS DECIMAL(10,4)
+        ) AS Alcance_GTP,
+        CAST(
+            CASE
+                WHEN AG.Avance_GTP > M.Meta_GTP
+                    THEN AG.Avance_GTP - M.Meta_GTP
+                ELSE 0
+            END
+            AS DECIMAL(10,3)
+        ) AS Excedente_GTP,
+        CAST(M.Meta_MM AS INT) AS Meta_MM,
+        CAST(COALESCE(AG.Avance_MM, 0) AS DECIMAL(10,3)) AS Avance_MM,
+        CAST(
+            AG.Avance_MM * 1.0
+            / NULLIF(M.Meta_MM, 0)
+            AS DECIMAL(10,4)
+        ) AS Alcance_MM,
+        CAST(
+            CASE
+                WHEN AG.Avance_MM > M.Meta_MM
+                    THEN AG.Avance_MM - M.Meta_MM
+                ELSE 0
+            END
+            AS DECIMAL(10,3)
+        ) AS Excedente_MM
+    FROM MetasGlobales M
+    LEFT JOIN AvancesGlobales AG
+        ON AG.Agencia = M.Agencia
+    WHERE @UnaAgencia = 0
     ORDER BY
-        Agencia;
+        Agencia,
+        CLO;
 END;
 GO

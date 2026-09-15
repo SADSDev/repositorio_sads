@@ -85,19 +85,23 @@ BEGIN
         AND A.Indicador IN ('VOLUMEN GTP', 'VOLUMEN MM')
     ),
 
-    ventas_filtradas AS (
+    ventas_filtradas AS
+    (
         SELECT
             VD.NUR,
+            A.Agencia,
             VD.Cliente,
             VD.Cantidad,
 
             CASE
-                WHEN GTP.Cliente IS NULL THEN 0
+                WHEN GTP.Cliente IS NULL
+                    THEN 0
                 ELSE 1
             END AS EsGTP,
 
             CASE
-                WHEN V.NUR IS NULL THEN 0
+                WHEN V.NUR IS NULL
+                    THEN 0
                 ELSE 1
             END AS EsMayoreo
 
@@ -106,24 +110,61 @@ BEGIN
         LEFT JOIN PWST.CATALOGOS_Clientes_GTP GTP
             ON GTP.Cliente = VD.Cliente
 
+        LEFT JOIN PWST.CATALOGOS_Agencias A
+            ON LEFT(
+                VD.NUR,
+                PATINDEX('%[A-Z]%', VD.NUR) - 1
+            ) = A.Clave_NUR
+
         LEFT JOIN PWST.CATALOGOS_Vendedores V
             ON V.NUR = VD.NUR
             AND V.Grupo = 'MAYOREO'
+
+        WHERE
+            VD.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+
             AND (
                 @agencia IS NULL
                 OR CHARINDEX(
-                    ',' + CONVERT(VARCHAR(10), V.Agencia) + ',',
+                    ',' + CONVERT(VARCHAR(10), A.Agencia) + ',',
                     ',' + @agencia + ','
                 ) > 0
             )
 
-        WHERE VD.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+            AND
+            (
+                -- Venta GTP
+                (
+                    GTP.Cliente IS NOT NULL
+                    AND EXISTS
+                    (
+                        SELECT 1
+                        FROM metas M
+                        WHERE M.Agencia = A.Agencia
+                        AND M.Indicador = 'VOLUMEN GTP'
+                    )
+                )
+
+                OR
+
+                -- Venta Mayoreo
+                (
+                    V.NUR IS NOT NULL
+                    AND EXISTS
+                    (
+                        SELECT 1
+                        FROM metas M
+                        WHERE M.Agencia = A.Agencia
+                        AND M.Indicador = 'VOLUMEN MM'
+                    )
+                )
+            )
     ),
 
     avances AS (
         SELECT
-            SUM(CASE WHEN EsGTP = 1 THEN Cantidad ELSE 0 END) AS Avance_GTP,
-            SUM(CASE WHEN EsMayoreo = 1 THEN Cantidad ELSE 0 END) AS Avance_MM
+            CAST(SUM(CASE WHEN EsGTP = 1 THEN Cantidad ELSE 0 END) AS DECIMAL(10,3)) AS Avance_GTP,
+            CAST(SUM(CASE WHEN EsMayoreo = 1 THEN Cantidad ELSE 0 END) AS DECIMAL(10,3)) AS Avance_MM
         FROM ventas_filtradas
     )
 
