@@ -105,9 +105,7 @@ BEGIN
         V.Semana_Mes,
         MIN(V.Error) AS Minimo,
         MAX(V.P95) AS Maximo
-
     INTO #maximo_minimo
-
     FROM
     (
         SELECT
