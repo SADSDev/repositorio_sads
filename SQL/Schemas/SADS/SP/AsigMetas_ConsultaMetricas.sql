@@ -228,3 +228,15 @@ BEGIN
         M.NUR, 
         M.Semana_Mes;
 END;
+
+--------------------------------------
+-- RESULT SET 4
+-- METAS MENSUALES
+--------------------------------------
+SELECT
+    ISNULL(CAST(MAX(Indicador) AS INT),0) AS Indicador,
+    ISNULL(CAST(MAX(Valor_Meta) AS INT),0) AS Valor_Meta
+FROM PWST.SADS_SegOper_MetasAgencia
+WHERE Agencia=@agencia
+AND MONTH(Mes)=@mes
+AND YEAR(Mes)=@anio
