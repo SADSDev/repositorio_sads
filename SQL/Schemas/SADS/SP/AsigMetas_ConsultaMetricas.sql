@@ -80,7 +80,6 @@ BEGIN
         M.NUR,
         M.Fecha,
         M.Valor_Meta AS Meta_Volumen
-
     INTO #metas_diarias
 
     FROM PWST.SADS_SegOper_Metas AS M
@@ -103,7 +102,11 @@ BEGIN
     SELECT
         V.NUR,
         V.Semana_Mes,
-        MIN(V.Error) AS Minimo,
+        CASE
+            WHEN MIN(V.Error) = 0
+            THEN MIN(CASE WHEN V.Error > 0 THEN V.Error END)
+            ELSE MIN(V.Error)
+        END AS Minimo,
         MAX(V.P95) AS Maximo
     INTO #maximo_minimo
     FROM
@@ -176,30 +179,23 @@ BEGIN
     -- RESULT SET 1
     -- Distribuciones de simulaciones de venta
     -------------------------------------------------------
-
     SELECT 
         S.NUR, 
         S.Simulacion,
         MONTH(S.Fecha) AS Mes, 
         SUM(M.Meta_Volumen * S.Error) AS Volumen_Simulado_Mensual 
-
     FROM PWST.ANALYTICS_SimulacionesVentas AS S 
-
     INNER JOIN #metas_diarias AS M 
         ON S.NUR = M.NUR 
         AND S.Fecha = M.Fecha 
-
     GROUP BY 
         S.NUR, 
         S.Simulacion, 
         MONTH(S.Fecha);
-
-
     -------------------------------------------------------
     -- RESULT SET 2
     -- Distribución de esfuerzo diario
     -------------------------------------------------------
-
     SELECT 
         M.NUR, 
         M.Fecha, 
@@ -207,9 +203,7 @@ BEGIN
             / SUM(M.Meta_Volumen) OVER (
                 PARTITION BY M.NUR
             ) AS Esfuerzo
-
     FROM #metas_diarias AS M
-
     ORDER BY 
         M.NUR, 
         M.Fecha;
@@ -226,15 +220,11 @@ BEGIN
         CAST(CEILING(M.Meta_Volumen) AS INT) AS Meta_Volumen, 
         MM.Minimo, 
         MM.Maximo
-
     FROM #metas_semanales AS M
-
     LEFT JOIN #maximo_minimo AS MM
         ON M.NUR = MM.NUR
         AND M.Semana_Mes = MM.Semana_Mes
-
     ORDER BY 
         M.NUR, 
         M.Semana_Mes;
-
 END;

@@ -55,7 +55,7 @@ def subir_datos_sql(
             how="left"
         )
         .melt(
-            id_vars=["Fecha", "NUR"],
+            id_vars=["Fecha", "NUR", "Peso_Esperado"],
             value_vars=marcas_estrategicas,
             var_name="Indicador",
             value_name="Meta_Mensual"
@@ -81,8 +81,8 @@ def subir_datos_sql(
     motor = obtener_motor()
     with motor.begin() as conn:
         # Eliminar metas existentes del mes
-        sql_query = text("""
-            DELETE FROM PWST.SADS_SegOper_Metas
+        sql_query = text(f"""
+            DELETE FROM {schema}.{tabla_sql}
             WHERE MONTH(Fecha) = :mes
               AND YEAR(Fecha) = :anio
         """)
