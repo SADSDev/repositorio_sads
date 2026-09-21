@@ -154,7 +154,7 @@ def obtener_dfs_sql(
                     V.Fecha,
                     SUM(
                         CASE
-                            WHEN B.Cliente IS NULL
+                            WHEN C.Cliente IS NULL
                             THEN V.Cantidad
                             ELSE 0
                         END
@@ -163,8 +163,8 @@ def obtener_dfs_sql(
                 FROM {schema}.{tabla_ventas} V
                 INNER JOIN rutas R
                     ON V.NUR = R.NUR
-                LEFT JOIN {schema}.{tabla_clietesgtp} B
-                    ON V.Cliente = B.Cliente
+                LEFT JOIN {schema}.{tabla_clietesgtp} C
+                    ON V.Cliente = C.Cliente
                 WHERE V.Fecha BETWEEN :fecha_inicio AND :fecha_fin
 
                 GROUP BY
@@ -175,6 +175,7 @@ def obtener_dfs_sql(
             SELECT
                 NUR,
                 Fecha,
+                Cantidad,
                 Cantidad * 1.0 /
                     SUM(Cantidad) OVER (
                         PARTITION BY
@@ -224,7 +225,7 @@ cortes_regimen = {
     "dia malo": 0.15,
     "dia normal": 0.80
 }
-tamaño_muestra=100000
+tamaño_muestra=10000
 
 
 #variables
@@ -264,11 +265,12 @@ for agencia in agencias_a_trabajar:
 
 df_mart_final = pd.concat(resultados,ignore_index=True)
 df_mart_final["Fecha"] = pd.to_datetime(df_mart_final["Fecha"])
+"""
 df_mart_final.to_excel(
     "df_mart.xlsx",
     index=False
 )
-
+"""
 #obtencion de error entre peso real y peso esperado
 # y clasificacion de regimen de error por nur
 df_simulaciones = (
@@ -388,10 +390,19 @@ for agencia in agencias_a_trabajar:
                 for regimen in probabilidades.index
             }
 
+            ventas = {
+                regimen: filtrado.loc[
+                    filtrado["Regimen"] == regimen,
+                    "Cantidad"
+                ].dropna().to_numpy()
+                for regimen in probabilidades.index
+            }
+
             distribuciones[(ruta, dia_semana)] = {
                 "regimenes": probabilidades.index.to_numpy(),
                 "probabilidades": probabilidades.values,
-                "errores": errores
+                "errores": errores,
+                "ventas": ventas
             }
 
     # ==========================================
@@ -420,24 +431,33 @@ for agencia in agencias_a_trabajar:
             )
 
             errores_simulados = np.zeros(tamaño_muestra)
+            ventas_simuladas = np.zeros(tamaño_muestra)
 
             for regimen in dist["regimenes"]:
 
                 mascara = regimenes == regimen
                 cantidad = mascara.sum()
 
-
                 if cantidad == 0:
                     continue
 
+                # ======================================
+                # DÍA SIN OPERACIÓN
+                # ======================================
                 if regimen == "dia sin operacion":
 
                     errores_simulados[mascara] = 0
+                    ventas_simuladas[mascara] = 0
 
+                # ======================================
+                # DÍAS CON OPERACIÓN
+                # ======================================
                 else:
 
                     errores_historicos = dist["errores"][regimen]
+                    ventas_historicas = dist["ventas"][regimen]
 
+                    # Validar que existan errores históricos
                     if len(errores_historicos) == 0:
                         raise ValueError(
                             f"Régimen sin errores históricos: "
@@ -447,9 +467,42 @@ for agencia in agencias_a_trabajar:
                             f"Régimen={regimen}"
                         )
 
+                    # Validar que existan ventas históricas
+                    if len(ventas_historicas) == 0:
+                        raise ValueError(
+                            f"Régimen sin ventas históricas: "
+                            f"Agencia={agencia}, "
+                            f"NUR={ruta}, "
+                            f"Fecha={fecha}, "
+                            f"Régimen={regimen}"
+                        )
+
+                    # ----------------------------------
+                    # Venta histórica base
+                    # ----------------------------------
+                    indices = np.random.randint(
+                        0,
+                        len(ventas_historicas),
+                        size=cantidad
+                    )
+
+                    ventas_base = ventas_historicas[indices]
+
+                    # ----------------------------------
+                    # Error histórico simulado
+                    # ----------------------------------
                     errores_simulados[mascara] = np.random.choice(
                         errores_historicos,
-                        size=cantidad
+                        size=cantidad,
+                        replace=True
+                    )
+
+                    # ----------------------------------
+                    # Venta simulada
+                    # ----------------------------------
+                    ventas_simuladas[mascara] = (
+                        ventas_base *
+                        errores_simulados[mascara]
                     )
 
             resultados_ruta.append(
@@ -458,15 +511,14 @@ for agencia in agencias_a_trabajar:
                     "Agencia": agencia,
                     "NUR": ruta,
                     "Fecha": fecha,
-                    "Error": errores_simulados
+                    "Error": errores_simulados,
+                    "Volumen_Simulado": ventas_simuladas
                 })
             )
 
         df_ruta = pd.concat(
             resultados_ruta,
             ignore_index=True
-        ).assign(
-            Volumen_Simulado=np.nan
         )
 
         subir_datos_sql(
@@ -478,6 +530,7 @@ for agencia in agencias_a_trabajar:
 
         del resultados_ruta
         del df_ruta
+
 
 #FIN
 
