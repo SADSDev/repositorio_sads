@@ -45,6 +45,8 @@ BEGIN
     GROUP BY 
         S.NUR, 
         S.Simulacion, 
-        MONTH(S.Fecha);
+        MONTH(S.Fecha)
+    ORDER BY
+        S.NUR;
     
 END
