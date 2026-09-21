@@ -37,7 +37,7 @@ BEGIN
         S.NUR, 
         S.Simulacion,
         MONTH(S.Fecha) AS Mes, 
-        SUM(M.Meta_Volumen * S.Error) AS Volumen_Simulado_Mensual 
+        SUM(S.Volumen_Simulado) AS Volumen_Simulado_Mensual 
     FROM PWST.ANALYTICS_SimulacionesVentas AS S 
     INNER JOIN #metas_diarias AS M 
         ON S.NUR = M.NUR 
