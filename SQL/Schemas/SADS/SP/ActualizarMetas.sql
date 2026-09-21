@@ -44,7 +44,8 @@ BEGIN
     FROM PWST.SADS_SegOper_Metas M
     WHERE
         YEAR(M.Fecha) = YEAR(@Mes_Meta)
-        AND MONTH(M.Fecha) = MONTH(@Mes_Meta);
+        AND MONTH(M.Fecha) = MONTH(@Mes_Meta)
+        AND Indicador = 'VISITAS EFECTIVAS';
 
     -----------------------------------------------------
     -- Metas e indicadores mensuales

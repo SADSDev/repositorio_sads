@@ -85,6 +85,7 @@ def subir_datos_sql(
             DELETE FROM {schema}.{tabla_sql}
             WHERE MONTH(Fecha) = :mes
               AND YEAR(Fecha) = :anio
+              AND Indicador <> 'VISITAS EFECTIVAS'
         """)
 
         conn.execute(
