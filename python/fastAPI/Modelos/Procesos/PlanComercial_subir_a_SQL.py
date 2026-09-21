@@ -24,6 +24,7 @@ def subir_datos_sql(
     marcas_estrategicas: list,
     anio: int,
     mes: int,
+    agencia:int,
     schema: str,
     tabla_sql: str
 ) -> pd.DataFrame:
@@ -82,17 +83,22 @@ def subir_datos_sql(
     with motor.begin() as conn:
         # Eliminar metas existentes del mes
         sql_query = text(f"""
-            DELETE FROM {schema}.{tabla_sql}
-            WHERE MONTH(Fecha) = :mes
-              AND YEAR(Fecha) = :anio
-              AND Indicador <> 'VISITAS EFECTIVAS'
+            DELETE M
+            FROM {schema}.{tabla_sql} AS M
+            INNER JOIN [PWST].[CATALOGOS_Agencias] AS A
+                ON M.NUR LIKE '%' + A.Clave_NUR + '%'
+            WHERE MONTH(M.Fecha) = :mes
+            AND YEAR(M.Fecha) = :anio
+            AND A.Agencia = :agencia
+            AND M.Indicador <> 'VISITAS EFECTIVAS'
         """)
 
         conn.execute(
             sql_query,
             {
                 "mes": mes,
-                "anio": anio
+                "anio": anio,
+                "agencia":agencia
             }
         )
 

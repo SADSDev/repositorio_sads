@@ -39,6 +39,7 @@ def ejecutar_plan(request: PlanComercialRequest):
         marcas_estrategicas=marcas_estrategicas,
         anio=request.mart.anio,
         mes=request.mart.mes,
+        agencia=request.mart.agencia,
         schema="PWST",
         tabla_sql="SADS_SegOper_Metas"
     )
