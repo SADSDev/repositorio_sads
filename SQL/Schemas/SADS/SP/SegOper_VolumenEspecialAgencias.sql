@@ -101,6 +101,50 @@ BEGIN
                     FROM STRING_SPLIT(@ruta, CHAR(44))
                 )
             )
+
+        UNION
+
+        SELECT DISTINCT
+            V.NUR,
+            A.Agencia,
+            A.CLO,
+            V.Grupo AS Zona
+        FROM PWST.CATALOGOS_Vendedores V
+        INNER JOIN PWST.CATALOGOS_Agencias A
+            ON V.NUR LIKE A.Clave_NUR + '%'
+        WHERE
+            @UnaAgencia = 1
+            AND V.Grupo = 'MAYOREO'
+            AND CHARINDEX(
+                ',' + CONVERT(VARCHAR(10), A.Agencia) + ',',
+                ',' + @agencia + ','
+            ) > 0
+            AND
+            (
+                @zona IS NULL
+                OR EXISTS
+                (
+                    SELECT 1
+                    FROM STRING_SPLIT(@zona, CHAR(44)) Z
+                    WHERE LTRIM(RTRIM(Z.value)) = V.Grupo
+                )
+            )
+            AND
+            (
+                @ruta IS NULL
+                OR CONCAT(
+                    'R',
+                    SUBSTRING(
+                        V.NUR,
+                        PATINDEX('%[A-Z]%', V.NUR) + 1,
+                        LEN(V.NUR)
+                    )
+                ) IN
+                (
+                    SELECT LTRIM(RTRIM(value))
+                    FROM STRING_SPLIT(@ruta, CHAR(44))
+                )
+            )
     ),
 
     MetasGlobales AS

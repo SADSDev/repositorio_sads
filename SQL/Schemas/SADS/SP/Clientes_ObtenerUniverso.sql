@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE [PWST].[Clientes_ObtenerUniverso]   
+CREATE OR ALTER PROCEDURE [PWST].[SADS_Clientes_ObtenerUniverso]   
 (
     @Cliente VARCHAR(300)
 )

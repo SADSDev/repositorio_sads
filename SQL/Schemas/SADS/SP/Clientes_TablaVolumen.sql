@@ -1,5 +1,5 @@
   
-CREATE OR ALTER PROCEDURE [PWST].[Clientes_TablaVolumen]  
+CREATE OR ALTER PROCEDURE [PWST].[SADS_Clientes_TablaVolumen]  
     @Cliente VARCHAR(300),  
     @Inicio INT,  
     @Fin INT,  

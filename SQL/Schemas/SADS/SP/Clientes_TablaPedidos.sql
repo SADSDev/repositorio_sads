@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE [PWST].[Clientes_TablaPedidos]  
+CREATE OR ALTER PROCEDURE [PWST].[SADS_Clientes_TablaPedidos]  
 @Cliente VARCHAR(300),  
 @Inicio INT,  
 @Fin INT,  
