@@ -118,8 +118,8 @@ BEGIN
         WHERE   1 = 1  
         AND     Cliente = @Cliente  
         AND     Familia IN (' + @ListaFamilias + ')  
-        AND     DATEPART(ISO_WEEK, Fecha) BETWEEN @Inicio AND @Fin  
-        AND     Fecha > DATEFROMPARTS(YEAR(GETDATE()), 1, 1)  
+        AND Fecha >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+        AND Fecha <= EOMONTH(GETDATE()) 
         GROUP BY Familia  
     ) AS Datos  
     PIVOT  
