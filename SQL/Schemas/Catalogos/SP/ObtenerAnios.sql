@@ -5,6 +5,6 @@ BEGIN
   
     SELECT DISTINCT  
         Anio  
-    FROM PSWST.CATALOGOS_Calendario  
+    FROM PWST.CATALOGOS_Calendario  
     ORDER BY Anio;  
 END;  
