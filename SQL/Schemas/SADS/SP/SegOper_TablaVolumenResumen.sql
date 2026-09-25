@@ -29,12 +29,6 @@ BEGIN
 
     DECLARE @fecha_fin DATE
 
-    /*
-    Frecuencia:
-    1 = únicamente el día consultado
-    2 = lunes de la semana hasta @fecha
-    3 = primer día del mes hasta @fecha
-    */
     SET @fecha_inicio =
         CASE @frecuencia
             WHEN 1 THEN @fecha
@@ -287,53 +281,78 @@ BEGIN
     AvancesEspeciales AS
     (
         SELECT
-            -- GTP acumulado al corte
             COALESCE(
                 SUM(
                     CASE
-                        WHEN EsGTP = 1
-                        THEN Cantidad
+                        WHEN GTP.Cliente IS NOT NULL
+                        THEN VD.Cantidad
                         ELSE 0
                     END
                 ),
                 0
             ) AS AvanceGTPMes,
-            -- GTP acumulado antes del periodo
+
             COALESCE(
                 SUM(
                     CASE
-                        WHEN EsGTP = 1
-                            AND Fecha < @fecha_inicio
-                        THEN Cantidad
+                        WHEN GTP.Cliente IS NOT NULL
+                            AND VD.Fecha < @fecha_inicio
+                        THEN VD.Cantidad
                         ELSE 0
                     END
                 ),
                 0
             ) AS AvanceGTPAntesPeriodo,
-            -- MM acumulado al corte
+
             COALESCE(
                 SUM(
                     CASE
-                        WHEN EsMayoreo = 1
-                        THEN Cantidad
+                        WHEN V.Grupo = 'MAYOREO'
+                        THEN VD.Cantidad
                         ELSE 0
                     END
                 ),
                 0
             ) AS AvanceMMMes,
-            -- MM acumulado antes del periodo
+
             COALESCE(
                 SUM(
                     CASE
-                        WHEN EsMayoreo = 1
-                            AND Fecha < @fecha_inicio
-                        THEN Cantidad
+                        WHEN V.Grupo = 'MAYOREO'
+                            AND VD.Fecha < @fecha_inicio
+                        THEN VD.Cantidad
                         ELSE 0
                     END
                 ),
                 0
             ) AS AvanceMMAntesPeriodo
-        FROM Ventas
+
+        FROM PWST.POWERSTREET_Venta_Diaria VD
+
+        LEFT JOIN PWST.CATALOGOS_Clientes_GTP GTP
+            ON GTP.Cliente = VD.Cliente
+
+        LEFT JOIN PWST.CATALOGOS_Vendedores V
+            ON V.NUR = VD.NUR
+
+        LEFT JOIN PWST.CATALOGOS_Agencias A
+            ON LEFT(
+                VD.NUR,
+                PATINDEX('%[A-Z]%', VD.NUR) - 1
+            ) = A.Clave_NUR
+
+        WHERE
+            VD.Fecha BETWEEN
+                DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+                AND @fecha
+
+            AND (
+                @agencia IS NULL
+                OR CHARINDEX(
+                    ',' + CONVERT(VARCHAR(10), A.Agencia) + ',',
+                    ',' + @agencia + ','
+                ) > 0
+            )
     ),
 
     Resultado AS

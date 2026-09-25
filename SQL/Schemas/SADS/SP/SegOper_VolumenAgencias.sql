@@ -339,8 +339,7 @@ SET NOCOUNT ON;
                 ) AS AvanceCLO,
                 SUM(
                     CASE
-                        WHEN R.EsMayoreo = 0
-                         AND V.EsGTP = 1
+                        WHEN V.EsGTP = 1
                             THEN V.Cantidad
                         ELSE 0
                     END
@@ -348,9 +347,10 @@ SET NOCOUNT ON;
             FROM RutasFiltradas R
             LEFT JOIN #VentasSector V
                 ON V.NUR = R.NUR
-               AND V.Fecha BETWEEN @FechaInicio AND @fecha
+            AND V.Fecha BETWEEN @FechaInicio AND @fecha
             GROUP BY R.Zona
         )
+
         SELECT
             S.Zona AS CLO,
 
@@ -378,8 +378,7 @@ SET NOCOUNT ON;
 
             CAST(
                 CASE
-                    WHEN S.Zona = 'MAYOREO'
-                     OR @AvanceGTPPeriodo = 0
+                    WHEN @AvanceGTPPeriodo = 0
                         THEN 0
                     ELSE
                         @ExcedenteGTP
