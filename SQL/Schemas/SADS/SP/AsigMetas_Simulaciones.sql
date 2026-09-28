@@ -41,7 +41,8 @@ BEGIN
     FROM PWST.ANALYTICS_SimulacionesVentas AS S 
     INNER JOIN #metas_diarias AS M 
         ON S.NUR = M.NUR 
-        AND S.Fecha = M.Fecha 
+        AND DAY(S.Fecha)=DAY(M.Fecha)
+        --AND S.Fecha = M.Fecha 
     GROUP BY 
         S.NUR, 
         S.Simulacion, 
