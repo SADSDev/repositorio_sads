@@ -11,7 +11,6 @@ BEGIN
     SELECT DISTINCT
         Familia
     FROM [PWST].[CATALOGOS_Vigencias_ME]
-    WHERE Fin_Vigencia IS NULL
-    AND Agencia = @agencia;
-
+    WHERE Agencia = @agencia;
+    
 END
