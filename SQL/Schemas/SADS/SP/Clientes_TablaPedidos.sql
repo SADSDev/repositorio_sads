@@ -22,13 +22,13 @@ CREATE TABLE #Pedidos
 
 INSERT INTO #Pedidos
 SELECT
-    Fecha,
+    FORMAT(Fecha, 'dd-MM-yyyy') AS Fecha,
     Orden,
     Status_Orden,
     Cantidad_Orden,
     ISNULL(Cantidad_Entrega, 0),
     ROUND(Cantidad_Orden * (Fullfillment / 100.0), 2),
-    Fullfillment
+    CONCAT(CAST(Fullfillment AS VARCHAR(20)), '%') AS Fullfillment 
 FROM PWST.POWERSTREET_Fullfillment_Pedidos_PMM
 WHERE Cliente = @Cliente
   AND DATEPART(ISO_WEEK, Fecha) BETWEEN @Inicio AND @Fin

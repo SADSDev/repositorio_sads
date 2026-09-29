@@ -10,7 +10,7 @@ AS
 SET NOCOUNT ON;  
   
 SELECT
-    Fecha, 
+    FORMAT(Fecha, 'dd-MM-yyyy') AS Fecha, 
     Codigo_Combo as FAP, 
     Descripcion_Combo as Descripcion, 
     Cantidad_Combos as Cantidad
