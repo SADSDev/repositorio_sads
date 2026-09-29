@@ -89,9 +89,18 @@ BEGIN
         LTRIM(RTRIM(M.Indicador)) AS Indicador
     INTO #Indicadores
     FROM PWST.SADS_SegOper_Metas M
+    INNER JOIN PWST.CATALOGOS_Agencias A
+        ON M.NUR LIKE A.Clave_NUR + '%'
     WHERE
         M.CategoriaId = 1
         AND UPPER(LTRIM(RTRIM(M.Indicador))) <> 'VOLUMEN'
+        AND (
+            @agencia IS NULL
+            OR A.Agencia IN (
+                SELECT TRY_CAST(value AS INT)
+                FROM STRING_SPLIT(@agencia, ',')
+            )
+        )
         AND M.Fecha BETWEEN
             DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
             AND EOMONTH(@fecha);
