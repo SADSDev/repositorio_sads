@@ -10,7 +10,7 @@ from MAM.modeloMAM import modeloMAM
 
 from MART.modeloMART import modeloMART
 
-from Procesos.PlanComercial_subir_a_SQL import subir_datos_sql
+from Procesos.PlanComercial_subir_a_SQL import subir_datos_sql_plancomercial
 from Schemas.request import PlanComercialRequest
 #--------------------------------------------------------
 # CONFIG API PLAN COMERCIAL
@@ -33,15 +33,22 @@ def ejecutar_plan(request: PlanComercialRequest):
         for marca in request.mam.marcas_estrategicas
     ]
 
-    subir_datos_sql(
+    metas_agencia = {
+        "VOLUMEN GTP": request.mam.meta_gtp,
+        "VOLUMEN MM": request.mam.meta_mm
+    }
+
+    subir_datos_sql_plancomercial(
         df_mam=df_mam,
         df_mart=df_mart,
+        indicadores_agencia=metas_agencia,
         marcas_estrategicas=marcas_estrategicas,
         anio=request.mart.anio,
         mes=request.mart.mes,
         agencia=request.mart.agencia,
         schema="PWST",
-        tabla_sql="SADS_SegOper_Metas"
+        tabla_metas_diarias_sql="SADS_SegOper_Metas",
+        tabla_metas_agencia_sql="SADS_SegOper_MetasAgencia"
     )
     
 

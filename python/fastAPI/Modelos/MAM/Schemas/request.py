@@ -22,5 +22,7 @@ class MAMRequest(BaseModel):
     anio: int
     agencia: int
     meta_neta:float
+    meta_gtp:float
+    meta_mm:float
 
     marcas_estrategicas: list[MetaMarca]
