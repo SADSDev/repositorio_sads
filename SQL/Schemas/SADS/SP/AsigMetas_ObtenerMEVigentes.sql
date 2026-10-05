@@ -1,7 +1,7 @@
 CREATE OR ALTER PROCEDURE PWST.SADS_AsigMetas_ObtenerMEVigentes  
 (  
-    @mes INT = NULL,   
-    @anio INT = NULL,   
+    @mes INT,   
+    @anio INT,   
     @agencia INT   
 )  
 AS  
