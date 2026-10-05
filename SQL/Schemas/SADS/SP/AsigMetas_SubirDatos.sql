@@ -88,7 +88,8 @@ BEGIN
     DELETE FROM PWST.SADS_SegOper_MetasAgencia
     WHERE YEAR(Mes) = @anio
       AND MONTH(Mes) = @mes
-      AND Agencia = @agencia;
+      AND Agencia = @agencia
+      AND CategoriaId=1;
 
 
     DELETE M
@@ -97,7 +98,8 @@ BEGIN
         ON M.NUR LIKE A.Clave_NUR + '%'
     WHERE YEAR(M.Fecha) = @anio
       AND MONTH(M.Fecha) = @mes
-      AND A.Agencia = @agencia;
+      AND A.Agencia = @agencia
+      AND CategoriaId=1;
 
 
     -- INSERCIONES DE DATOS
