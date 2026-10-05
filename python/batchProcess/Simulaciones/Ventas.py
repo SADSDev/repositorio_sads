@@ -30,7 +30,8 @@ from fastAPI.Modelos.MART.modeloMART import modeloMART
 #variables de entorno
 schema=os.getenv("SCHEMA")
 tabla_ventas=os.getenv("TABLA_VENTAS")
-tabla_simulaciones=os.getenv("TABLA_SIMULACIONES")
+tabla_simulaciones_diarias=os.getenv("TABLA_SIMULACIONES_DIARIAS")
+tabla_simulaciones_mensuales=os.getenv("TABLA_SIMULACIONES_MENSUALES")
 tabla_ponderaciones=os.getenv("TABLA_POND_MODELO")
 tabla_rutas=os.getenv("TABLA_RUTAS")
 tabla_clientesgtp=os.getenv("TABLA_CLIENTESGTP")
@@ -46,12 +47,15 @@ tabla_metas_diarias=os.getenv("TABLA_METASDIARIAS")
 def subir_datos_sql(
     df_simulaciones: pd.DataFrame,
     schema:str,
-    tabla_simulaciones:str,
+    mes_actual:date,
+    tabla_simulaciones_diarias:str,
+    tabla_simulaciones_mensuales:str,
     nur_a_borrar:str)-> pd.DataFrame:
 
     df=df_simulaciones
     motor=obtener_motor()
     with motor.begin() as conn:
+        
         # Obtener nombres de columnas exactos desde SQL Server en orden
         sql_column_query = text("""
             SELECT COLUMN_NAME 
@@ -61,16 +65,24 @@ def subir_datos_sql(
         """)
         sql_column_result = conn.execute(
             sql_column_query,
-            dict(schema=schema, tabla=tabla_simulaciones)
+            dict(schema=schema, tabla=tabla_simulaciones_diarias)
         ).fetchall()        
         sql_columns = [row[0] for row in sql_column_result]
         if len(df.columns) != len(sql_columns):
             raise ValueError(f"❌ El DataFrame tiene {len(df.columns)} columnas pero la tabla SQL tiene {len(sql_columns)}.")
 
-        #borrar datos existentes del nur
+        #borrar datos existentes del nur de las tablas de simualciones
         conn.execute(text(f"""
-            DELETE FROM {schema}.{tabla_simulaciones}
+            DELETE FROM {schema}.{tabla_simulaciones_diarias}
             WHERE NUR= '{nur_a_borrar}'
+            """
+            )
+        )
+        conn.execute(text(f"""
+            DELETE FROM {schema}.{tabla_simulaciones_mensuales}
+            WHERE NUR = '{nur_a_borrar}'
+            AND MONTH(Mes)=MONTH('{mes_actual}')
+            AND YEAR(Mes)=YEAR('{mes_actual}')
             """
             )
         )
@@ -78,7 +90,7 @@ def subir_datos_sql(
 
         #subir datos
         df.to_sql(
-            name=tabla_simulaciones,
+            name=tabla_simulaciones_diarias,
             con=conn,
             schema=schema,
             if_exists="append",
@@ -86,6 +98,44 @@ def subir_datos_sql(
             method=None,
             index=False
         )
+
+        # actualizar tabla de simulaciones mensuales con nuevos datos
+        conn.execute(text(f"""
+                SELECT
+                    S.NUR,
+                    S.Simulacion,
+                    DATEFROMPARTS(YEAR(S.Fecha), MONTH(S.Fecha), 1) AS Mes,
+                    SUM(S.Volumen_Simulado) AS Volumen_Simulado_Mensual
+                INTO #simulaciones_mensuales
+                FROM {schema}.{tabla_simulaciones_diarias} AS S
+                WHERE
+                    S.NUR = '{nur_a_borrar}'
+                    AND S.Fecha BETWEEN
+                        '{mes_actual}'
+                        AND EOMONTH('{mes_actual}')
+                GROUP BY
+                    S.NUR,
+                    S.Simulacion,
+                    DATEFROMPARTS(YEAR(S.Fecha), MONTH(S.Fecha), 1)
+                ORDER BY
+                    S.NUR,
+                    S.Simulacion ASC;
+
+                INSERT INTO {schema}.{tabla_simulaciones_mensuales}
+                (
+                    NUR,
+                    Simulacion,
+                    Mes,
+                    Volumen_Simulado_Mensual
+                )
+                SELECT
+                    NUR,
+                    Simulacion,
+                    Mes,
+                    Volumen_Simulado_Mensual
+                FROM #simulaciones_mensuales;
+            """
+        ))
         print("✅ Datos insertados correctamente.")
 
 
@@ -97,6 +147,16 @@ def obtener_parametros_proceso(
     tabla_agencias:str):
 
     motor = obtener_motor()
+
+    fecha_hoy=pd.read_sql(
+        text(f"""
+            SELECT DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AS Fecha_Hoy
+        """
+        ),
+        con=motor
+    )["Fecha_Hoy"].iloc[0]
+    fecha_hoy=fecha_hoy.date()
+
     mes_max = pd.read_sql(
         text(f"""
             SELECT MAX(Mes) AS Mes
@@ -126,7 +186,7 @@ def obtener_parametros_proceso(
 
     motor.dispose()
 
-    return mes_min, mes_max, agencias_a_trabajar
+    return fecha_hoy, mes_min, mes_max, agencias_a_trabajar
 
 #obtencion de df´s extras de sql
 @manejar_error_conexion_sql
@@ -211,10 +271,10 @@ def obtener_dfs_sql(
 #==========================================================
 
 #parametros
-#fecha_hoy = date(2026, 8, 1)
-fecha_hoy=date.today()+relativedelta(day=1)
+# pruebas: fecha_hoy = date(2026, 8, 1)
+#fecha_hoy=date.today()+relativedelta(day=1)
 
-mes_min, mes_max, agencias_a_trabajar = obtener_parametros_proceso(
+fecha_hoy, mes_min, mes_max, agencias_a_trabajar = obtener_parametros_proceso(
     schema=schema,
     tabla_ponderaciones=tabla_ponderaciones,
     tabla_agencias=tabla_agencias
@@ -524,7 +584,9 @@ for agencia in agencias_a_trabajar:
         subir_datos_sql(
             df_simulaciones=df_ruta,
             schema=schema,
-            tabla_simulaciones=tabla_simulaciones,
+            mes_actual=fecha_hoy,
+            tabla_simulaciones_diarias=tabla_simulaciones_diarias,
+            tabla_simulaciones_mensuales=tabla_simulaciones_mensuales,
             nur_a_borrar=ruta
         )
 
