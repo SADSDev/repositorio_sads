@@ -19,8 +19,6 @@ BEGIN
     -------------------------------------------------------
     SELECT
         S.NUR,
-        S.Simulacion,
-        S.Mes,
         S.Volumen_Simulado_Mensual
     FROM PWST.ANALYTICS_SimulacionesVentasMensuales S
     LEFT JOIN PWST.CATALOGOS_Agencias A
