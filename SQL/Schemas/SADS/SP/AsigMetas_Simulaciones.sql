@@ -8,46 +8,25 @@ AS
 BEGIN 
 
     SET NOCOUNT ON;
-    -----------------------------------------------------------
-    -- METAS DIARIAS
-    -----------------------------------------------------------
+    
+    DECLARE @fecha DATE;
 
-    SELECT
-        M.NUR,
-        M.Fecha,
-        M.Valor_Meta AS Meta_Volumen
-    INTO #metas_diarias
+    SET @fecha = DATEFROMPARTS(@anio, @mes, 1);
 
-    FROM PWST.SADS_SegOper_Metas AS M
-
-    INNER JOIN PWST.CATALOGOS_Agencias AS A
-        ON M.NUR LIKE '%' + A.Clave_NUR + '%'
-
-    WHERE
-        M.Indicador = 'VOLUMEN'
-        AND A.Agencia = @agencia
-        AND M.Fecha BETWEEN
-            DATEFROMPARTS(@anio, @mes, 1)
-            AND EOMONTH(DATEFROMPARTS(@anio, @mes, 1));
     -------------------------------------------------------
     -- RESULT SET 1
     -- Distribuciones de simulaciones de venta
     -------------------------------------------------------
-    SELECT 
-        S.NUR, 
+    SELECT
+        S.NUR,
         S.Simulacion,
-        MONTH(S.Fecha) AS Mes, 
-        SUM(S.Volumen_Simulado) AS Volumen_Simulado_Mensual 
-    FROM PWST.ANALYTICS_SimulacionesVentas AS S 
-    INNER JOIN #metas_diarias AS M 
-        ON S.NUR = M.NUR 
-        AND DAY(S.Fecha)=DAY(M.Fecha)
-        --AND S.Fecha = M.Fecha 
-    GROUP BY 
-        S.NUR, 
-        S.Simulacion, 
-        MONTH(S.Fecha)
-    ORDER BY
-        S.NUR;
+        S.Mes,
+        S.Volumen_Simulado_Mensual
+    FROM PWST.ANALYTICS_SimulacionesVentasMensuales S
+    LEFT JOIN PWST.CATALOGOS_Agencias A
+        ON S.NUR LIKE A.Clave_NUR + '%'
+    WHERE 
+        A.Agencia = @agencia
+        AND S.Mes = @fecha;
     
 END
