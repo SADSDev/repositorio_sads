@@ -50,6 +50,7 @@ def subir_datos_sql(
     mes_actual:date,
     tabla_simulaciones_diarias:str,
     tabla_simulaciones_mensuales:str,
+    tabla_calendario: str,
     nur_a_borrar:str)-> pd.DataFrame:
 
     df=df_simulaciones
@@ -108,11 +109,13 @@ def subir_datos_sql(
                     SUM(S.Volumen_Simulado) AS Volumen_Simulado_Mensual
                 INTO #simulaciones_mensuales
                 FROM {schema}.{tabla_simulaciones_diarias} AS S
+                INNER JOIN {schema}.{tabla_calendario} AS C
+                    ON S.Fecha = C.Fecha
                 WHERE
-                    S.NUR = '{nur_a_borrar}'
-                    AND S.Fecha BETWEEN
-                        '{mes_actual}'
-                        AND EOMONTH('{mes_actual}')
+                    C.Es_Habil = 1
+                    AND S.NUR = '{nur_a_borrar}'
+                    AND S.Fecha >= '{mes_actual}'
+                    AND S.Fecha < DATEADD(MONTH, 1, '{mes_actual}')
                 GROUP BY
                     S.NUR,
                     S.Simulacion,
