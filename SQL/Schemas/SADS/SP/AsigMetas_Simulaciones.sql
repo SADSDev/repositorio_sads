@@ -19,7 +19,7 @@ BEGIN
     -------------------------------------------------------
     SELECT
         S.NUR,
-        S.Volumen_Simulado_Mensual
+        CAST(ROUND(S.Volumen_Simulado_Mensual,0) AS INT) AS Volumen_Simulado_Mensual 
     FROM PWST.ANALYTICS_SimulacionesVentasMensuales S
     LEFT JOIN PWST.CATALOGOS_Agencias A
         ON S.NUR LIKE A.Clave_NUR + '%'
