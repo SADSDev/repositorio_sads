@@ -22,12 +22,14 @@ BEGIN
     WITH
     (
         Agencia INT '$.Agencia',
+        MetaGT  DECIMAL(18,4) '$.MetasAgencia.MetaGT', 
         MetaGTP DECIMAL(18,4) '$.MetasAgencia.MetaGTP',
         MetaMM DECIMAL(18,4) '$.MetasAgencia.MetaMM'
     ) A
     CROSS APPLY
     (
         VALUES
+            ('VOLUMEN', A.MetaGT),
             ('VOLUMEN GTP', A.MetaGTP),
             ('VOLUMEN MM', A.MetaMM)
     ) V(Indicador, Valor_Meta);
