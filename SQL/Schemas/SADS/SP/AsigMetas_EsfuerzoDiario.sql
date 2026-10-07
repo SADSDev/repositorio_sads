@@ -10,29 +10,12 @@ BEGIN
     SET NOCOUNT ON;  
   
     -----------------------------------------------------------  
-    -- METAS semanales  
+    -- METAS diarias  
     -----------------------------------------------------------  
   
     SELECT  
         M.NUR,  
-        (  
-            DAY(M.Fecha)   
-            +   
-            (  
-                (  
-                    DATEPART(  
-                        WEEKDAY,  
-                        DATEFROMPARTS(  
-                            YEAR(M.Fecha),  
-                            MONTH(M.Fecha),  
-                            1  
-                        )  
-                    )  
-                    + @@DATEFIRST - 2  
-                ) % 7  
-            )  
-            - 1  
-        ) / 7 + 1 AS Semana_Mes,  
+        M.Fecha,  
         M.Valor_Meta AS Meta_Volumen  
     INTO #metas_diarias  
     FROM PWST.SADS_SegOper_Metas AS M  
@@ -47,11 +30,11 @@ BEGIN
   
     -------------------------------------------------------  
     -- RESULT SET 2  
-    -- Distribución de esfuerzo semanal  
+    -- Distribución de esfuerzo diario  
     -------------------------------------------------------  
     SELECT
         M.NUR,
-        CAST(M.Semana_Mes AS INT) AS Semana_Mes,
+        M.Fecha,
         SUM(M.Meta_Volumen)
             / SUM(SUM(M.Meta_Volumen)) OVER (
                 PARTITION BY M.NUR
@@ -59,10 +42,10 @@ BEGIN
     FROM #metas_diarias AS M
     GROUP BY
         M.NUR,
-        M.Semana_Mes
+        M.Fecha
     ORDER BY
         M.NUR,
-        M.Semana_Mes;
+        M.Fecha;
 
 END
   
