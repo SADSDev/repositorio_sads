@@ -29,6 +29,7 @@ from fastAPI.Modelos.MART.modeloMART import modeloMART
 
 #variables de entorno
 schema=os.getenv("SCHEMA")
+tabla_calendario=os.getenv("TABLA_CALENDARIO")
 tabla_ventas=os.getenv("TABLA_VENTAS")
 tabla_simulaciones_diarias=os.getenv("TABLA_SIMULACIONES_DIARIAS")
 tabla_simulaciones_mensuales=os.getenv("TABLA_SIMULACIONES_MENSUALES")
@@ -158,7 +159,6 @@ def obtener_parametros_proceso(
         ),
         con=motor
     )["Fecha_Hoy"].iloc[0]
-    fecha_hoy=fecha_hoy.date()
 
     mes_max = pd.read_sql(
         text(f"""
@@ -590,6 +590,7 @@ for agencia in agencias_a_trabajar:
             mes_actual=fecha_hoy,
             tabla_simulaciones_diarias=tabla_simulaciones_diarias,
             tabla_simulaciones_mensuales=tabla_simulaciones_mensuales,
+            tabla_calendario=tabla_calendario,
             nur_a_borrar=ruta
         )
 
