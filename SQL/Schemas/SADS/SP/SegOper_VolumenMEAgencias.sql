@@ -93,25 +93,56 @@ BEGIN
       Indicadores estratégicos disponibles en el mes consultado.
       Se excluye el indicador VOLUMEN.
     */
+    SELECT
+        M.Fecha,
+        M.NUR,
+        M.CategoriaId,
+        M.Valor_Meta,
+        C.Indicador
+    INTO #MetasNormalizadas
+    FROM PWST.SADS_SegOper_Metas AS M
+    CROSS APPLY
+    (
+        SELECT
+            STUFF(
+                (
+                    SELECT ' + ' + X.Marca
+                    FROM
+                    (
+                        SELECT DISTINCT
+                            UPPER(LTRIM(RTRIM(S.value))) AS Marca
+                        FROM STRING_SPLIT(M.Indicador, '+') AS S
+                        WHERE LTRIM(RTRIM(S.value)) <> ''
+                    ) AS X
+                    ORDER BY X.Marca
+                    FOR XML PATH(''), TYPE
+                ).value('.', 'VARCHAR(100)'),
+                1,
+                3,
+                ''
+            ) AS Indicador
+    ) AS C
+    WHERE
+        M.CategoriaId = 1
+        AND M.Fecha BETWEEN
+            DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+            AND EOMONTH(@fecha);
+
     SELECT DISTINCT
-        LTRIM(RTRIM(M.Indicador)) AS Indicador
+        M.Indicador
     INTO #Indicadores
-    FROM PWST.SADS_SegOper_Metas M
+    FROM #MetasNormalizadas AS M
     INNER JOIN PWST.CATALOGOS_Agencias A
         ON M.NUR LIKE A.Clave_NUR + '%'
     WHERE
-        M.CategoriaId = 1
-        AND UPPER(LTRIM(RTRIM(M.Indicador))) <> 'VOLUMEN'
+        UPPER(M.Indicador) <> 'VOLUMEN'
         AND (
             @agencia IS NULL
             OR A.Agencia IN (
                 SELECT TRY_CAST(value AS INT)
                 FROM STRING_SPLIT(@agencia, ',')
             )
-        )
-        AND M.Fecha BETWEEN
-            DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
-            AND EOMONTH(@fecha);
+        );
 
     IF NOT EXISTS (SELECT 1 FROM #Indicadores)
     BEGIN
@@ -264,7 +295,7 @@ BEGIN
     (
         SELECT
             M.NUR,
-            LTRIM(RTRIM(M.Indicador)) AS Indicador,
+            M.Indicador AS Indicador,
 
             SUM(
                 CASE
@@ -282,24 +313,24 @@ BEGIN
                 END
             ) AS ObjAlDia
 
-        FROM PWST.SADS_SegOper_Metas M
+        FROM #MetasNormalizadas M
         INNER JOIN Rutas R
             ON R.NUR = M.NUR
         INNER JOIN #Indicadores I
-            ON I.Indicador = LTRIM(RTRIM(M.Indicador))
+            ON I.Indicador = M.Indicador
         WHERE
             M.CategoriaId = 1
             AND M.Fecha BETWEEN @fecha_inicio AND @fecha_fin
         GROUP BY
             M.NUR,
-            LTRIM(RTRIM(M.Indicador))
+            M.Indicador
     ),
 
     Ventas AS
     (
         SELECT
             M.NUR,
-            LTRIM(RTRIM(M.Indicador)) AS Indicador,
+            M.Indicador AS Indicador,
             SUM(VD.Cantidad) AS Avance
         FROM Metas M
         INNER JOIN PWST.POWERSTREET_Venta_Diaria VD
@@ -316,7 +347,7 @@ BEGIN
             )
         GROUP BY
             M.NUR,
-            LTRIM(RTRIM(M.Indicador))
+            M.Indicador
     ),
 
     RutasConMeta AS
