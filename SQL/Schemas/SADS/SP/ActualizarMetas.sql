@@ -2,12 +2,10 @@
 -- cada ruta debe hacer mensualmente, en base a la meta fija mensual de clientes
 --y a los días operativos del mes de la meta
 --Esta programado en un job para correr cada día ultimo del mes en curso
-
-CREATE OR ALTER PROCEDURE PWST.SADS_ActualizarMetas
+CREATE OR ALTER PROCEDURE PWST.SADS_ActualizarMetasVisitas
 (
     @Mes_a_actualizar DATE
 )
-
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -15,15 +13,12 @@ BEGIN
     DECLARE @Mes_Meta DATE;
     DECLARE @Dias_Operativos INT;
 
-    --floor date del mes
-    
     SET @Mes_Meta = DATEFROMPARTS(
                         YEAR(@Mes_a_actualizar),
                         MONTH(@Mes_a_actualizar),
                         1
-                    )
+                    );
 
-    -- Días hábiles
     SELECT
         @Dias_Operativos = COUNT(*)
     FROM PWST.CATALOGOS_Calendario
@@ -36,36 +31,12 @@ BEGIN
     -- Limpiar metas existentes
     -----------------------------------------------------
 
-    DELETE
-    FROM PWST.SADS_SegOper_Metas_Mensuales
-    WHERE Mes = @Mes_Meta;
-
     DELETE M
     FROM PWST.SADS_SegOper_Metas M
     WHERE
         YEAR(M.Fecha) = YEAR(@Mes_Meta)
         AND MONTH(M.Fecha) = MONTH(@Mes_Meta)
-        AND Indicador = 'VISITAS EFECTIVAS';
-
-    -----------------------------------------------------
-    -- Metas e indicadores mensuales
-    -----------------------------------------------------
-
-    INSERT INTO PWST.SADS_SegOper_Metas_Mensuales
-    (
-        Mes,
-        NUR,
-        CategoriaId,
-        Indicador,
-        Valor_Meta
-    )
-    SELECT
-        @Mes_Meta,
-        NUR,
-        CategoriaId,
-        Indicador,
-        Valor_Objetivo
-    FROM PWST.CATALOGOS_Objetivos_Fijos_Rutas;
+        AND M.Indicador = 'VISITAS EFECTIVAS';
 
     -----------------------------------------------------
     -- Metas diarias
@@ -84,27 +55,16 @@ BEGIN
         O.NUR,
         O.CategoriaId,
         O.Indicador,
-
-        CASE
-            WHEN O.Indicador = 'VISITAS EFECTIVAS'
-                THEN ROUND(O.Valor_Objetivo / @Dias_Operativos, 3)
-        
-            ELSE
-                O.Valor_Objetivo
-        END
-
-    FROM PWST.CATALOGOS_Objetivos_Fijos_Rutas O
-
-    CROSS JOIN PWST.CATALOGOS_Calendario C
-
+        ROUND(O.Valor_Meta / @Dias_Operativos, 3)
+    FROM PWST.SADS_SegOper_Metas_Mensuales O
+    
     WHERE
         C.Anio = YEAR(@Mes_Meta)
         AND C.Mes = MONTH(@Mes_Meta)
         AND C.Es_Habil = 1
+        AND O.Mes = @Mes_Meta
+        AND O.Indicador = 'VISITAS EFECTIVAS';
 
-        -- Categorías 3 y 4 son indicadores,
-        -- no metas operativas diarias
-        AND O.CategoriaId NOT IN (3,4);
 
 END;
 GO
