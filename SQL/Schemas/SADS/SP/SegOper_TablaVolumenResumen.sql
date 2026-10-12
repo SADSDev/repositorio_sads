@@ -295,18 +295,6 @@ BEGIN
             COALESCE(
                 SUM(
                     CASE
-                        WHEN GTP.Cliente IS NOT NULL
-                            AND VD.Fecha < @fecha_inicio
-                        THEN VD.Cantidad
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS AvanceGTPAntesPeriodo,
-
-            COALESCE(
-                SUM(
-                    CASE
                         WHEN V.Grupo = 'MAYOREO'
                         THEN VD.Cantidad
                         ELSE 0
@@ -318,14 +306,26 @@ BEGIN
             COALESCE(
                 SUM(
                     CASE
-                        WHEN V.Grupo = 'MAYOREO'
-                            AND VD.Fecha < @fecha_inicio
+                        WHEN GTP.Cliente IS NOT NULL
+                            AND VD.Fecha BETWEEN @fecha_inicio AND @fecha
                         THEN VD.Cantidad
                         ELSE 0
                     END
                 ),
                 0
-            ) AS AvanceMMAntesPeriodo
+            ) AS AvanceGTPPeriodo,
+
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN V.Grupo = 'MAYOREO'
+                            AND VD.Fecha BETWEEN @fecha_inicio AND @fecha
+                        THEN VD.Cantidad
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS AvanceMMPeriodo
 
         FROM PWST.POWERSTREET_Venta_Diaria VD
 
@@ -400,22 +400,15 @@ BEGIN
 
         CAST(
             CASE
-                WHEN
-                    MAX(AE.AvanceGTPMes)
-                    - MAX(ME.MetaGTP) > 0
+                WHEN MAX(ME.MetaGTP) = 0
+                    OR MAX(AE.AvanceGTPMes) > MAX(ME.MetaGTP)
                 THEN
-                    MAX(AE.AvanceGTPMes)
-                    - MAX(ME.MetaGTP)
-                ELSE 0
-            END
-            -
-            CASE
-                WHEN
-                    MAX(AE.AvanceGTPAntesPeriodo)
-                    - MAX(ME.MetaGTP) > 0
-                THEN
-                    MAX(AE.AvanceGTPAntesPeriodo)
-                    - MAX(ME.MetaGTP)
+                    CASE @frecuencia
+                        WHEN 1 THEN MAX(AE.AvanceGTPPeriodo)
+                        WHEN 2 THEN MAX(AE.AvanceGTPPeriodo)
+                        WHEN 3 THEN
+                            MAX(AE.AvanceGTPMes) - MAX(ME.MetaGTP)
+                    END
                 ELSE 0
             END
             AS DECIMAL(18,3)
@@ -423,22 +416,15 @@ BEGIN
 
         CAST(
             CASE
-                WHEN
-                    MAX(AE.AvanceMMMes)
-                    - MAX(ME.MetaMM) > 0
+                WHEN MAX(ME.MetaMM) = 0
+                    OR MAX(AE.AvanceMMMes) > MAX(ME.MetaMM)
                 THEN
-                    MAX(AE.AvanceMMMes)
-                    - MAX(ME.MetaMM)
-                ELSE 0
-            END
-            -
-            CASE
-                WHEN
-                    MAX(AE.AvanceMMAntesPeriodo)
-                    - MAX(ME.MetaMM) > 0
-                THEN
-                    MAX(AE.AvanceMMAntesPeriodo)
-                    - MAX(ME.MetaMM)
+                    CASE @frecuencia
+                        WHEN 1 THEN MAX(AE.AvanceMMPeriodo)
+                        WHEN 2 THEN MAX(AE.AvanceMMPeriodo)
+                        WHEN 3 THEN
+                            MAX(AE.AvanceMMMes) - MAX(ME.MetaMM)
+                    END
                 ELSE 0
             END
             AS DECIMAL(18,3)
