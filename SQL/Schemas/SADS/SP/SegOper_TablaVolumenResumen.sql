@@ -1,4 +1,3 @@
-
 CREATE OR ALTER PROCEDURE PWST.SADS_SegOper_TablaVolumenResumen
 (
     @fecha DATE,
@@ -56,7 +55,6 @@ BEGIN
     SET @fecha_fin =
         CASE @frecuencia
             WHEN 1 THEN @fecha
-
             WHEN 2 THEN
                 CASE
                     WHEN DATEADD(
@@ -65,17 +63,63 @@ BEGIN
                             @fecha
                         ) > EOMONTH(@fecha)
                     THEN EOMONTH(@fecha)
-
                     ELSE DATEADD(
                             DAY,
                             6 - (DATEDIFF(DAY, CONVERT(DATE, '19000101'), @fecha) % 7),
                             @fecha
                         )
                 END
-
             WHEN 3 THEN
                 EOMONTH(@fecha)
         END;
+
+    /*
+       Se materializan las ventas del mes una sola vez para reutilizarlas
+       tanto en el avance normal como en los volúmenes especiales.
+    */
+    SELECT
+        VD.NUR,
+        VD.Fecha,
+        VD.Cantidad,
+        A.Agencia,
+        CASE
+            WHEN EXISTS
+            (
+                SELECT 1
+                FROM PWST.CATALOGOS_Clientes_GTP GTP
+                WHERE GTP.Cliente = VD.Cliente
+            )
+            THEN 1
+            ELSE 0
+        END AS EsGTP,
+        CASE
+            WHEN EXISTS
+            (
+                SELECT 1
+                FROM PWST.CATALOGOS_Vendedores V
+                WHERE V.NUR = VD.NUR
+                  AND V.Grupo = 'MAYOREO'
+            )
+            THEN 1
+            ELSE 0
+        END AS EsMayoreo
+    INTO #VentasMes
+    FROM PWST.POWERSTREET_Venta_Diaria VD
+    LEFT JOIN PWST.CATALOGOS_Agencias A
+        ON LEFT(
+            VD.NUR,
+            PATINDEX('%[A-Z]%', VD.NUR) - 1
+        ) = A.Clave_NUR
+    WHERE
+        VD.Fecha >= DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+        AND VD.Fecha < DATEADD(DAY, 1, @fecha)
+        AND (
+            @agencia IS NULL
+            OR CHARINDEX(
+                ',' + CONVERT(VARCHAR(10), A.Agencia) + ',',
+                ',' + @agencia + ','
+            ) > 0
+        );
 
     ;WITH Rutas AS
     (
@@ -185,39 +229,12 @@ BEGIN
         SELECT
             VD.NUR,
             VD.Fecha,
-            VD.Cliente,
             VD.Cantidad,
-
-            CASE
-                WHEN GTP.Cliente IS NULL THEN 0
-                ELSE 1
-            END AS EsGTP,
-
-            CASE
-                WHEN EXISTS
-                (
-                    SELECT 1
-                    FROM PWST.CATALOGOS_Vendedores V
-                    WHERE
-                        V.NUR = VD.NUR
-                        AND V.Grupo = 'MAYOREO'
-                )
-                THEN 1
-                ELSE 0
-            END AS EsMayoreo
-
-        FROM PWST.POWERSTREET_Venta_Diaria VD
-
+            VD.EsGTP,
+            VD.EsMayoreo
+        FROM #VentasMes VD
         INNER JOIN RutasVentas R
             ON R.NUR = VD.NUR
-
-        LEFT JOIN PWST.CATALOGOS_Clientes_GTP GTP
-            ON GTP.Cliente = VD.Cliente
-
-        WHERE
-            VD.Fecha BETWEEN
-                DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
-                AND @fecha
     ),
 
     Avances AS
@@ -241,118 +258,80 @@ BEGIN
     MetasEspeciales AS
     (
         SELECT
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN UPPER(LTRIM(RTRIM(M.Indicador))) = 'VOLUMEN GTP'
-                        THEN M.Valor_Meta
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS MetaGTP,
-
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN UPPER(LTRIM(RTRIM(M.Indicador))) = 'VOLUMEN MM'
-                        THEN M.Valor_Meta
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS MetaMM
-
+            M.Agencia,
+            COALESCE(SUM(CASE
+                WHEN UPPER(LTRIM(RTRIM(M.Indicador))) = 'VOLUMEN GTP'
+                THEN M.Valor_Meta ELSE 0
+            END), 0) AS MetaGTP,
+            COALESCE(SUM(CASE
+                WHEN UPPER(LTRIM(RTRIM(M.Indicador))) = 'VOLUMEN MM'
+                THEN M.Valor_Meta ELSE 0
+            END), 0) AS MetaMM
         FROM PWST.SADS_SegOper_MetasAgencia M
         WHERE
             M.Mes = DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
-            AND UPPER(LTRIM(RTRIM(M.Indicador)))
-                IN ('VOLUMEN GTP', 'VOLUMEN MM')
-            AND
-            (
+            AND UPPER(LTRIM(RTRIM(M.Indicador))) IN ('VOLUMEN GTP', 'VOLUMEN MM')
+            AND (
                 @agencia IS NULL
                 OR CHARINDEX(
                     ',' + CONVERT(VARCHAR(10), M.Agencia) + ',',
                     ',' + @agencia + ','
                 ) > 0
             )
+        GROUP BY M.Agencia
     ),
 
     AvancesEspeciales AS
     (
         SELECT
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN GTP.Cliente IS NOT NULL
-                        THEN VD.Cantidad
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS AvanceGTPMes,
+            VD.Agencia,
+            COALESCE(SUM(CASE
+                WHEN VD.EsGTP = 1 THEN VD.Cantidad
+                ELSE 0
+            END), 0) AS AvanceGTPMes,
+            COALESCE(SUM(CASE
+                WHEN VD.EsMayoreo = 1 THEN VD.Cantidad
+                ELSE 0
+            END), 0) AS AvanceMMMes,
+            COALESCE(SUM(CASE
+                WHEN VD.EsGTP = 1
+                    AND VD.Fecha BETWEEN @fecha_inicio AND @fecha
+                THEN VD.Cantidad ELSE 0
+            END), 0) AS AvanceGTPPeriodo,
+            COALESCE(SUM(CASE
+                WHEN VD.EsMayoreo = 1
+                    AND VD.Fecha BETWEEN @fecha_inicio AND @fecha
+                THEN VD.Cantidad ELSE 0
+            END), 0) AS AvanceMMPeriodo
+        FROM #VentasMes VD
+        GROUP BY VD.Agencia
+    ),
 
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN V.Grupo = 'MAYOREO'
-                        THEN VD.Cantidad
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS AvanceMMMes,
-
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN GTP.Cliente IS NOT NULL
-                            AND VD.Fecha BETWEEN @fecha_inicio AND @fecha
-                        THEN VD.Cantidad
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS AvanceGTPPeriodo,
-
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN V.Grupo = 'MAYOREO'
-                            AND VD.Fecha BETWEEN @fecha_inicio AND @fecha
-                        THEN VD.Cantidad
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS AvanceMMPeriodo
-
-        FROM PWST.POWERSTREET_Venta_Diaria VD
-
-        LEFT JOIN PWST.CATALOGOS_Clientes_GTP GTP
-            ON GTP.Cliente = VD.Cliente
-
-        LEFT JOIN PWST.CATALOGOS_Vendedores V
-            ON V.NUR = VD.NUR
-
-        LEFT JOIN PWST.CATALOGOS_Agencias A
-            ON LEFT(
-                VD.NUR,
-                PATINDEX('%[A-Z]%', VD.NUR) - 1
-            ) = A.Clave_NUR
-
-        WHERE
-            VD.Fecha BETWEEN
-                DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
-                AND @fecha
-
-            AND (
-                @agencia IS NULL
-                OR CHARINDEX(
-                    ',' + CONVERT(VARCHAR(10), A.Agencia) + ',',
-                    ',' + @agencia + ','
-                ) > 0
-            )
+    ExcedentesEspeciales AS
+    (
+        SELECT
+            M.Agencia,
+            CASE
+                WHEN M.MetaGTP = 0 OR COALESCE(A.AvanceGTPMes, 0) > M.MetaGTP
+                THEN CASE @frecuencia
+                    WHEN 1 THEN COALESCE(A.AvanceGTPPeriodo, 0)
+                    WHEN 2 THEN COALESCE(A.AvanceGTPPeriodo, 0)
+                    WHEN 3 THEN COALESCE(A.AvanceGTPMes, 0) - M.MetaGTP
+                END
+                ELSE 0
+            END AS ExcedenteGTP,
+            CASE
+                WHEN M.MetaMM = 0 OR COALESCE(A.AvanceMMMes, 0) > M.MetaMM
+                THEN CASE @frecuencia
+                    WHEN 1 THEN COALESCE(A.AvanceMMPeriodo, 0)
+                    WHEN 2 THEN COALESCE(A.AvanceMMPeriodo, 0)
+                    WHEN 3 THEN COALESCE(A.AvanceMMMes, 0) - M.MetaMM
+                END
+                ELSE 0
+            END AS ExcedenteMM
+        FROM MetasEspeciales M
+        LEFT JOIN AvancesEspeciales A
+            ON A.Agencia = M.Agencia
     ),
 
     Resultado AS
@@ -398,40 +377,18 @@ BEGIN
             AS INT
         ) AS ObjAlDia,
 
-        CAST(
-            CASE
-                WHEN MAX(ME.MetaGTP) = 0
-                    OR MAX(AE.AvanceGTPMes) > MAX(ME.MetaGTP)
-                THEN
-                    CASE @frecuencia
-                        WHEN 1 THEN MAX(AE.AvanceGTPPeriodo)
-                        WHEN 2 THEN MAX(AE.AvanceGTPPeriodo)
-                        WHEN 3 THEN
-                            MAX(AE.AvanceGTPMes) - MAX(ME.MetaGTP)
-                    END
-                ELSE 0
-            END
-            AS DECIMAL(18,3)
-        ) AS ExcedenteGTP,
+        CAST(COALESCE((
+            SELECT SUM(ExcedenteGTP)
+            FROM ExcedentesEspeciales
+        ), 0) AS DECIMAL(18,3)) AS ExcedenteGTP,
 
-        CAST(
-            CASE
-                WHEN MAX(ME.MetaMM) = 0
-                    OR MAX(AE.AvanceMMMes) > MAX(ME.MetaMM)
-                THEN
-                    CASE @frecuencia
-                        WHEN 1 THEN MAX(AE.AvanceMMPeriodo)
-                        WHEN 2 THEN MAX(AE.AvanceMMPeriodo)
-                        WHEN 3 THEN
-                            MAX(AE.AvanceMMMes) - MAX(ME.MetaMM)
-                    END
-                ELSE 0
-            END
-            AS DECIMAL(18,3)
-        ) AS ExcedenteMM
+        CAST(COALESCE((
+            SELECT SUM(ExcedenteMM)
+            FROM ExcedentesEspeciales
+        ), 0) AS DECIMAL(18,3)) AS ExcedenteMM
 
-    FROM Resultado R
-    CROSS JOIN MetasEspeciales ME
-    CROSS JOIN AvancesEspeciales AE;
+    FROM Resultado R;
+
+    DROP TABLE #VentasMes;
 END;
 GO 
