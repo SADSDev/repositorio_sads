@@ -43,8 +43,7 @@ BEGIN
     -------------------------------------------------------
     -- Proceso
     -------------------------------------------------------
-
-    ;WITH nurs AS
+    ;WITH supervisores AS
     (
         SELECT DISTINCT
             S.Codigo,
@@ -87,7 +86,7 @@ BEGIN
     (
         SELECT
             t.NUR,
-            t.Vendedor,
+            t.Supervisor AS Vendedor,
             n.CLO,
             n.Agencia,
             n.Grupo,
@@ -102,26 +101,12 @@ BEGIN
                     PARTITION BY I.Cliente
                     ORDER BY I.Fecha DESC
                 ) AS rn
-            FROM PWST.POWERSTREET_ITO_Detallado I
-            WHERE
-                I.Vendedor LIKE '%Supervisor%'
-                AND I.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+            FROM PWST.POWERSTREET_Encuestas_Supervisores I
+            WHERE I.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
         ) t
-
-        INNER JOIN nurs n
-            ON LEFT(
-                t.NUR,
-                PATINDEX('%[^0-9]%', t.NUR) - 1
-            ) = n.Clave_NUR
-
-            -- ESTE ES EL FILTRO QUE FALTABA
-            AND LEFT(
-                t.Vendedor,
-                CHARINDEX(' -', t.Vendedor) - 1
-            ) = n.Codigo
-
-        WHERE
-            t.rn = 1
+        INNER JOIN supervisores n
+            ON t.Supervisor = n.Codigo
+        WHERE t.rn = 1
     )
 
     SELECT
@@ -129,17 +114,21 @@ BEGIN
         t.CLO,
         CAST(s.Valor_Meta AS INT) AS Valor_Meta,
         COUNT(DISTINCT t.Cliente) AS Total_Visitas,
-        CAST(COUNT(DISTINCT t.Cliente)/s.Valor_Meta AS DECIMAL(10,4)) AS Alcance
+        CAST(
+            COUNT(DISTINCT t.Cliente) * 1.0 / NULLIF(s.Valor_Meta, 0)
+            AS DECIMAL(10,4)
+        ) AS Alcance
     FROM ito_supervisores t
     INNER JOIN PWST.SADS_SegOper_MetasSupervisor s
         ON s.Agencia = t.Agencia
+        AND s.Grupo = t.Grupo
         AND s.Indicador = 'VISITAS'
+        AND s.Mes = DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
     GROUP BY
         t.Vendedor,
         t.CLO,
         s.Valor_Meta
     ORDER BY
         t.CLO DESC;
-
 END;
 GO

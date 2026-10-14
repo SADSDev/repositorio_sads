@@ -70,7 +70,11 @@ BEGIN
             AND
             (
                 @zona IS NULL
-                OR EXISTS (SELECT 1 FROM STRING_SPLIT(@zona, CHAR(44)) Z WHERE LTRIM(RTRIM(Z.value)) = S.Grupo)
+                OR EXISTS (
+                    SELECT 1
+                    FROM STRING_SPLIT(@zona, CHAR(44)) Z
+                    WHERE LTRIM(RTRIM(Z.value)) = S.Grupo
+                )
             )
             AND
             (
@@ -82,7 +86,10 @@ BEGIN
                         PATINDEX('%[A-Z]%', S.NUR) + 1,
                         LEN(S.NUR)
                     )
-                ) IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@ruta, CHAR(44)))
+                ) IN (
+                    SELECT LTRIM(RTRIM(value))
+                    FROM STRING_SPLIT(@ruta, CHAR(44))
+                )
             )
     ),
 
@@ -90,7 +97,7 @@ BEGIN
     (
         SELECT
             t.NUR,
-            t.Vendedor,
+            t.Supervisor AS Vendedor,
             n.CLO,
             n.Agencia,
             n.Grupo,
@@ -105,23 +112,13 @@ BEGIN
                     PARTITION BY I.Cliente
                     ORDER BY I.Fecha DESC
                 ) AS rn
-            FROM PWST.POWERSTREET_ITO_Detallado I
+            FROM PWST.POWERSTREET_Encuestas_Supervisores I
             WHERE
-                I.Vendedor LIKE '%Supervisor%'
-                AND I.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+                I.Fecha >= @FechaInicioPeriodo
+                AND I.Fecha < DATEADD(DAY, 1, @fecha)
         ) t
-
         INNER JOIN nurs n
-            ON LEFT(
-                t.NUR,
-                PATINDEX('%[^0-9]%', t.NUR) - 1
-            ) = n.Clave_NUR
-
-            AND LEFT(
-                t.Vendedor,
-                CHARINDEX(' -', t.Vendedor) - 1
-            ) = n.Codigo
-
+            ON t.Supervisor = n.Codigo
         WHERE
             t.rn = 1
     ),
@@ -131,11 +128,13 @@ BEGIN
         SELECT
             t.Vendedor,
             t.Agencia,
+            t.Grupo,
             CAST(s.Valor_Meta AS INT) AS Valor_Meta,
             COUNT(DISTINCT t.Cliente) AS Total_Visitas
         FROM ito_supervisores t
         INNER JOIN PWST.SADS_SegOper_MetasSupervisor s
             ON s.Agencia = t.Agencia
+            AND s.Grupo = t.Grupo
             AND s.Indicador = 'VISITAS'
             AND s.Mes = DATEFROMPARTS(
                 YEAR(@fecha),
@@ -145,6 +144,7 @@ BEGIN
         GROUP BY
             t.Vendedor,
             t.Agencia,
+            t.Grupo,
             s.Valor_Meta
     )
 
