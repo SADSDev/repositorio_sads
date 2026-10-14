@@ -128,8 +128,10 @@ BEGIN
         FOR Familia IN (' + @Columnas + ')  
     ) AS pvt;  
   
-    SELECT ' + @ColumnasFinal + '  
-    FROM #Datos P;  
+    SELECT ' + REPLACE(@ColumnasFinal, 'P.', 'P.') + '
+    FROM (SELECT 1 AS Dummy) D
+    LEFT JOIN #Datos P
+        ON 1 = 1; 
   
     DROP TABLE #Datos;  
   
