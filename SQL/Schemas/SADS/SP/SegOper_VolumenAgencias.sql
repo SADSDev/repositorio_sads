@@ -79,11 +79,11 @@ SET NOCOUNT ON;
                 V.NUR,
                 V.Grupo AS Zona,
                 CAST(0 AS BIT) AS EsMayoreo
-            FROM PWST.CATALOGOS_Rutas_Evaluables V
+            FROM PWST.CATALOGOS_Vendedores V
             INNER JOIN PWST.CATALOGOS_Agencias A
                 ON V.NUR LIKE A.Clave_NUR + '%'
             WHERE A.Agencia = TRY_CONVERT(INT, @agencia)
-              AND V.Grupo <> 'MAYOREO'
+              AND V.Evaluable=1
               AND NOT EXISTS
               (
                   SELECT 1
@@ -419,18 +419,18 @@ SET NOCOUNT ON;
     /* =====================================================
        VARIAS AGENCIAS O AGENCIA NULL: RESULTADO POR CLO
        ===================================================== */
-
     SELECT DISTINCT
         V.NUR,
         A.Agencia,
         A.CLO,
         V.Grupo AS Zona
     INTO #RutasGlobal
-    FROM PWST.CATALOGOS_Rutas_Evaluables V
+    FROM PWST.CATALOGOS_Vendedores V
     INNER JOIN PWST.CATALOGOS_Agencias A
         ON V.NUR LIKE A.Clave_NUR + '%'
     WHERE
-        (
+        (V.Evaluable=1 OR V.Grupo='MAYOREO')
+        AND(
             @agencia IS NULL
             OR CHARINDEX(
                 ',' + CONVERT(VARCHAR(10), A.Agencia) + ',',

@@ -31,8 +31,9 @@ def obtener_esfuerzo_historico(agencia: int, fecha_inicio: date, fecha_fin: date
             WITH rutas AS (
                 SELECT
                     NUR
-                FROM PWST.CATALOGOS_Rutas_Evaluables
+                FROM PWST.CATALOGOS_Vendedores
                 WHERE Agencia = :agencia
+                AND Evaluable=1
             ),
 
             articulos AS (

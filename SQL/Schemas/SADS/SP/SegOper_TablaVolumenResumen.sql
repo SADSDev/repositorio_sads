@@ -128,11 +128,11 @@ BEGIN
             A.Agencia,
             A.CLO,
             V.Grupo AS Zona
-        FROM PWST.CATALOGOS_Rutas_Evaluables V
+        FROM PWST.CATALOGOS_Vendedores V
         INNER JOIN PWST.CATALOGOS_Agencias A
             ON V.NUR LIKE A.Clave_NUR + '%'
         WHERE
-            V.NUR <> '1125632M29'
+            V.Evaluable=1
             AND (
                 @agencia IS NULL
                 OR CHARINDEX(
@@ -196,13 +196,12 @@ BEGIN
             A.Agencia,
             A.CLO,
             V.Grupo AS Zona
-        FROM PWST.CATALOGOS_Rutas_Evaluables V
-
+        FROM PWST.CATALOGOS_Vendedores V
         INNER JOIN PWST.CATALOGOS_Agencias A
             ON V.NUR LIKE A.Clave_NUR + '%'
-
         WHERE
-            (
+            V.Evaluable=1 OR V.Grupo='MAYOREO'
+            AND(
                 @agencia IS NULL
                 OR CHARINDEX(
                     ',' + CONVERT(VARCHAR(10), A.Agencia) + ',',

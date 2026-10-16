@@ -88,11 +88,9 @@ BEGIN
                 WHEN @AgruparPorGrupo = 1 THEN V.Grupo
                 ELSE A.CLO
             END AS Agrupador
-        FROM PWST.CATALOGOS_Rutas_Evaluables V
-
+        FROM PWST.CATALOGOS_Vendedores V
         INNER JOIN PWST.CATALOGOS_Agencias A
             ON V.NUR LIKE A.Clave_NUR + '%'
-
         WHERE(
                 @agencia IS NULL
                 OR CHARINDEX(
@@ -113,6 +111,7 @@ BEGIN
                         )
                     ) IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@ruta, CHAR(44)))
             )
+            AND (V.Evaluable=1 OR V.NUR='1125632M29')
     ),
 
     dias_trabajados AS (
