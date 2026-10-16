@@ -1,20 +1,28 @@
-  
-CREATE TABLE PWST.CATALOGOS_ClientesGTMM
+USE [DataMart]
+GO
+
+/****** Objeto: Table [PWST].[CATALOGOS_ClientesGTMM] Fecha de script: 16/10/2026 12:59:39 p. m. ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [PWST].[CATALOGOS_ClientesGTMM](
+	[Cliente] [varchar](20) NOT NULL,
+	[Clasificacion] [varchar](50) NULL,
+	[SD] [varchar](100) NULL,
+	[MDZ] [varchar](150) NULL,
+	[Agencia] [int] NULL,
+ CONSTRAINT [PK_CATALOGOS_ClientesGTMM] PRIMARY KEY CLUSTERED 
 (
-    Cliente VARCHAR(20) NOT NULL,
-    Clasificacion VARCHAR(50),
-    SD VARCHAR(100),
-    MDZ VARCHAR(150),
-    Agencia INT,
+	[Cliente] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
 
-    CONSTRAINT PK_CATALOGOS_ClientesGTMM
-        PRIMARY KEY (Cliente),
+ALTER TABLE [PWST].[CATALOGOS_ClientesGTMM]  WITH CHECK ADD  CONSTRAINT [FK_ClientesGTMM_Agencia] FOREIGN KEY([Agencia])
+REFERENCES [PWST].[CATALOGOS_Agencias] ([Agencia])
+GO
 
-    CONSTRAINT FK_ClientesGTMM_Cliente
-        FOREIGN KEY (Cliente)
-        REFERENCES PWST.POWERSTREET_Universo_Clientes (Codigo_GLN),
-
-    CONSTRAINT FK_ClientesGTMM_Agencia
-        FOREIGN KEY (Agencia)
-        REFERENCES PWST.CATALOGOS_Agencias (Agencia)
-);
+ALTE
