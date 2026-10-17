@@ -32,6 +32,12 @@ __pycache__/
 # Package files
 *.jar
 
+# Excel otros df´s
+*.xlsx
+*.xls
+*.csv
+
+
 # Maven
 target/
 dist/
