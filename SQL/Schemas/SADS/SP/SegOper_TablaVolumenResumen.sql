@@ -65,12 +65,18 @@ BEGIN
 
     SELECT
         CAST(
-            COALESCE(SUM(MetaVolumen), 0)
+            COALESCE(SUM(CASE
+                WHEN CLO <> 'MAYOREO' THEN MetaVolumen
+                ELSE 0
+            END), 0)
             AS INT
         ) AS MetaVolumen,
 
         CAST(
-            COALESCE(SUM(AvanceCLO), 0)
+            COALESCE(SUM(CASE
+                WHEN CLO <> 'MAYOREO' THEN AvanceCLO
+                ELSE 0
+            END), 0)
             AS DECIMAL(18,3)
         ) AS AvanceRuta,
 
@@ -89,6 +95,7 @@ BEGIN
             AS DECIMAL(18,3)
         ) AS ExcedenteMM
     FROM #DetalleVolumen;
+
     DROP TABLE #DetalleVolumen;
 
 END;
