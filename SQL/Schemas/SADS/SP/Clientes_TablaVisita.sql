@@ -19,7 +19,7 @@ AND  DATEPART(ISO_WEEK, Fecha)
 BETWEEN @Inicio  
 AND  @Fin  
 AND  Fecha > DATEFROMPARTS(YEAR(GETDATE()), 1, 1)   
-ORDER BY Fecha, HoraInicio  
+ORDER BY TRY_CONVERT(DATE, Fecha, 105) ASC, HoraInicio ASC 
   
   
   
