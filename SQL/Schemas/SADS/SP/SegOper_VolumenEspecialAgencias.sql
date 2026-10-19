@@ -280,7 +280,7 @@ BEGIN
         CAST(COALESCE(ASec.Avance_GTP, 0) AS DECIMAL(10,3)) AS Avance_GTP,
         CAST(
             COALESCE(ASec.Avance_GTP, 0) * 1.0
-            / NULLIF(M.Meta_GTP, 0)
+            / NULLIF(AG.Avance_GTP, 0)
             AS DECIMAL(10,4)
         ) AS Alcance_GTP,
         CAST(
