@@ -86,7 +86,7 @@ BEGIN
     (
         SELECT
             t.NUR,
-            t.Supervisor AS Vendedor,
+            t.Supervisor,
             n.CLO,
             n.Agencia,
             n.Grupo,
@@ -110,7 +110,7 @@ BEGIN
     )
 
     SELECT
-        t.Vendedor,
+        t.Supervisor,
         t.CLO,
         CAST(s.Valor_Meta AS INT) AS Valor_Meta,
         COUNT(DISTINCT t.Cliente) AS Total_Visitas,
@@ -125,7 +125,7 @@ BEGIN
         AND s.Indicador = 'VISITAS'
         AND s.Mes = DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
     GROUP BY
-        t.Vendedor,
+        t.Supervisor,
         t.CLO,
         s.Valor_Meta
     ORDER BY
