@@ -21,7 +21,7 @@ AS
         ISNULL(S.Tier, 'ND') AS Tier,
         ISNULL(S.Custom, 'ND') AS Custom,
         CASE WHEN S.Gtplus=1 THEN 'SI' ELSE 'NO' END AS Gtplus,
-        S.Credito,
+        ISNULL(CAST(S.Credito AS VARCHAR(50)), 'ND') AS Credito,
         CASE WHEN S.[Open]=1 THEN 'SI' ELSE 'NO' END AS [Open],
         CASE WHEN S.Ponderado=1 THEN 'SI' ELSE 'NO' END AS Ponderado,
         CASE WHEN S.Visitable=1 THEN 'SI' ELSE 'NO' END AS Visitable,
@@ -31,7 +31,7 @@ AS
     FROM PWST.POWERSTREET_Universo_Clientes UC
     LEFT JOIN PWST.CATALOGOS_Agencias A
         ON UC.Agencia=A.Agencia  
-    INNER JOIN PWST.CATALOGOS_Sabana S  
+    LEFT JOIN PWST.CATALOGOS_Sabana S  
         ON  UC.Codigo_GLN LIKE  '%' + S.ClienteISMS + '%'  
         AND  UC.Agencia = S.Agencia      
     WHERE UC.Codigo_GLN = @Cliente
