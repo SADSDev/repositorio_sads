@@ -149,6 +149,7 @@ SET NOCOUNT ON;
             @AvanceGTPMes DECIMAL(18,3),
             @AvanceGTPAntes DECIMAL(18,3),
             @AvanceMMMes DECIMAL(18,3),
+            @AvanceMMAntes DECIMAL(18,3),
             @ExcedenteGTP DECIMAL(18,3);
 
         SELECT
@@ -221,6 +222,18 @@ SET NOCOUNT ON;
                     SUM(
                         CASE
                             WHEN EsMayoreo = 1
+                                THEN Cantidad
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ),
+            @AvanceMMAntes =
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN EsMayoreo = 1
+                             AND Fecha < @FechaInicio
                                 THEN Cantidad
                             ELSE 0
                         END
@@ -355,13 +368,12 @@ SET NOCOUNT ON;
             S.Zona AS CLO,
 
             CAST(
-                CEILING(
-                    CASE
-                        WHEN S.Zona = 'MAYOREO'
-                            THEN @MetaMM
-                        ELSE COALESCE(M.MetaVolumen, 0)
-                    END
-                ) AS INT
+                CASE
+                    WHEN S.Zona = 'MAYOREO'
+                        THEN @MetaMM
+                    ELSE COALESCE(M.MetaVolumen, 0)
+                END
+                AS DECIMAL(18,3)
             ) AS MetaVolumen,
 
             CAST(
@@ -370,7 +382,7 @@ SET NOCOUNT ON;
                         THEN 0
                     ELSE COALESCE(M.ObjAlDia, 0)
                 END
-                AS INT
+                AS DECIMAL(18,3)
             ) AS ObjAlDia,
 
             CAST(COALESCE(A.AvanceCLO, 0) AS DECIMAL(18,3))
@@ -387,20 +399,23 @@ SET NOCOUNT ON;
                 END
                 AS DECIMAL(18,3)
             ) AS InyeccionGTP,
-
             CAST(
                 CASE
-                    WHEN S.Zona = 'MAYOREO'
-                     AND @AvanceMMMes > @MetaMM
-                        THEN
-                            CASE
-                                WHEN @frecuencia IN (1, 2)
-                                    THEN COALESCE(A.AvanceCLO, 0)
-                                WHEN @frecuencia = 3
-                                    THEN COALESCE(A.AvanceCLO, 0) - @MetaMM
-                                ELSE 0
-                            END
-                    ELSE 0
+                    WHEN S.Zona <> 'MAYOREO'
+                        THEN 0
+
+                    ELSE
+                        CASE
+                            WHEN @AvanceMMMes - @MetaMM > 0
+                                THEN @AvanceMMMes - @MetaMM
+                            ELSE 0
+                        END
+                        -
+                        CASE
+                            WHEN @AvanceMMAntes - @MetaMM > 0
+                                THEN @AvanceMMAntes - @MetaMM
+                            ELSE 0
+                        END
                 END
                 AS DECIMAL(18,3)
             ) AS InyeccionMM
@@ -590,9 +605,9 @@ SET NOCOUNT ON;
     )
     SELECT
         R.CLO,
-        CAST(CEILING(SUM(COALESCE(M.MetaVolumen, 0))) AS INT)
+        CAST(ROUND(SUM(COALESCE(M.MetaVolumen, 0)),0) AS INT)
             AS MetaVolumen,
-        CAST(CEILING(SUM(COALESCE(M.ObjAlDia, 0))) AS INT)
+        CAST(ROUND(SUM(COALESCE(M.ObjAlDia, 0)),0) AS INT)
             AS ObjAlDia,
         CAST(SUM(COALESCE(A.AvanceCLO, 0)) AS DECIMAL(18,3))
             AS AvanceCLO,
