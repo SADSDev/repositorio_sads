@@ -110,25 +110,29 @@ BEGIN
     )
 
     SELECT
-        t.Supervisor,
-        t.CLO,
-        CAST(s.Valor_Meta AS INT) AS Valor_Meta,
-        COUNT(DISTINCT t.Cliente) AS Total_Visitas,
+        S.Codigo AS Supervisor,
+        S.CLO,
+        CAST(M.Valor_Meta AS INT) AS Valor_Meta,
+        COUNT(DISTINCT T.Cliente) AS Total_Visitas,
         CAST(
-            COUNT(DISTINCT t.Cliente) * 1.0 / NULLIF(s.Valor_Meta, 0)
+            COUNT(DISTINCT T.Cliente) * 1.0 / NULLIF(M.Valor_Meta, 0)
             AS DECIMAL(10,4)
         ) AS Alcance
-    FROM ito_supervisores t
-    INNER JOIN PWST.SADS_SegOper_MetasSupervisor s
-        ON s.Agencia = t.Agencia
-        AND s.Grupo = t.Grupo
-        AND s.Indicador = 'VISITAS'
-        AND s.Mes = DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+    FROM supervisores S
+    INNER JOIN PWST.SADS_SegOper_MetasSupervisor M
+        ON M.Agencia = S.Agencia
+        AND M.Grupo = S.Grupo
+        AND M.Indicador = 'VISITAS'
+        AND M.Mes = DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+    LEFT JOIN ito_supervisores T
+        ON T.Supervisor = S.Codigo
+        AND T.Agencia = S.Agencia
+        AND T.Grupo = S.Grupo
     GROUP BY
-        t.Supervisor,
-        t.CLO,
-        s.Valor_Meta
+        S.Codigo,
+        S.CLO,
+        M.Valor_Meta
     ORDER BY
-        t.CLO DESC;
+        S.CLO DESC;
 END;
 GO
