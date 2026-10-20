@@ -4,11 +4,11 @@ CREATE TABLE PWST.SEGURIDAD_UsuarioRecursos
     RecursoId INT NOT NULL,
 
     CONSTRAINT PK_SEGURIDAD_UsuarioRecursos
-        PRIMARY KEY (UsuarioId, RecursoId),
+        PRIMARY KEY (UsuarioAplicacionId, RecursoId),
 
-    CONSTRAINT FK_SEGURIDAD_UsuarioRecursos_Usuarios
-        FOREIGN KEY (UsuarioId)
-        REFERENCES PWST.SEGURIDAD_Usuarios (Id),
+    CONSTRAINT FK_SEGURIDAD_UsuarioRecursos_UsuarioAplicacion
+        FOREIGN KEY (UsuarioAplicacionId)
+        REFERENCES PWST.SEGURIDAD_UsuarioAplicacion (UsuarioAplicacionId),
 
     CONSTRAINT FK_SEGURIDAD_UsuarioRecursos_Recursos
         FOREIGN KEY (RecursoId)
