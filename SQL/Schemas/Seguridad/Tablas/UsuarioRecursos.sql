@@ -1,6 +1,6 @@
 CREATE TABLE PWST.SEGURIDAD_UsuarioRecursos
 (
-    UsuarioId INT NOT NULL,
+    UsuarioAplicacionId INT NOT NULL,
     RecursoId INT NOT NULL,
 
     CONSTRAINT PK_SEGURIDAD_UsuarioRecursos
