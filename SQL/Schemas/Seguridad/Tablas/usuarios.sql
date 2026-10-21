@@ -9,7 +9,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE TABLE [PWST].[SEGURIDAD_Usuarios](
-	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[UsuarioId] [int] IDENTITY(1,1) NOT NULL,
 	[NombreUsuario] [varchar](50) NOT NULL,
 	[Contrasena] [varchar](50) NOT NULL,
 	[NombreCompleto] [varchar](150) NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE [PWST].[SEGURIDAD_Usuarios](
 	[FechaCreacion] [datetime2](7) NOT NULL,
  CONSTRAINT [PK_Usuarios] PRIMARY KEY CLUSTERED 
 (
-	[Id] ASC
+	[UsuarioIdId] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY],
  CONSTRAINT [UQ_Usuarios_NombreUsuario] UNIQUE NONCLUSTERED 
 (
