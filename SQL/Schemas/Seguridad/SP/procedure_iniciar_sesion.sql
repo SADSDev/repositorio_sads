@@ -16,11 +16,11 @@ BEGIN
     ---------------------------------------------------------
 
     SELECT
-        @UsuarioId = U.Id,
+        @UsuarioId = U.UsuarioId,
         @RolId = UA.RolId
     FROM PWST.SEGURIDAD_Usuarios U
     INNER JOIN PWST.SEGURIDAD_UsuarioAplicacion UA
-        ON U.Id = UA.UsuarioId
+        ON U.UsuarioId = UA.UsuarioId
     WHERE
         U.NombreUsuario = @nombre
         AND U.Contrasena = @contrasena
@@ -39,7 +39,7 @@ BEGIN
     ---------------------------------------------------------
 
     SELECT
-        U.Id AS UsuarioId,
+        U.UsuarioId AS UsuarioId,
         U.NombreCompleto AS Nombre,
         UA.AplicacionId,
 
@@ -56,7 +56,7 @@ BEGIN
     FROM PWST.SEGURIDAD_Usuarios U
 
     INNER JOIN PWST.SEGURIDAD_UsuarioAplicacion UA
-        ON U.Id = UA.UsuarioId
+        ON U.UsuarioId = UA.UsuarioId
 
     INNER JOIN PWST.SEGURIDAD_Roles R
         ON UA.RolId = R.RolId
@@ -68,7 +68,7 @@ BEGIN
         ON UP.PermisoId = P.PermisoId
 
     WHERE
-        U.Id = @UsuarioId
+        U.UsuarioId = @UsuarioId
         AND UA.AplicacionId = @Aplicacion
 
     ORDER BY
