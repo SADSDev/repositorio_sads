@@ -26,49 +26,14 @@ BEGIN
     DECLARE @FechaInicioPeriodo DATE;
 
     -------------------------------------------------------
-    -- Definir inicio del periodo según frecuencia
+    -- Definir inicio del periodo (siempre frecuencia mensual)
     -------------------------------------------------------
-
-    IF @frecuencia = 1
-    BEGIN
-        -- Diario: solamente la fecha consultada
-        SET @FechaInicioPeriodo = @fecha;
-    END
-
-    ELSE IF @frecuencia = 2
-    BEGIN
-        SET @FechaInicioPeriodo =
-            CASE
-                WHEN DATEADD(
-                        DAY,
-                        -((DATEDIFF(DAY, '19000101', @fecha)) % 7),
-                        @fecha
-                    ) < DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
-                THEN DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
-
-                ELSE DATEADD(
-                        DAY,
-                        -((DATEDIFF(DAY, '19000101', @fecha)) % 7),
-                        @fecha
-                    )
-            END;
-    END
-
-    ELSE IF @frecuencia = 3
-    BEGIN
-        -- Mensual: primer día del mes de @fecha
-        SET @FechaInicioPeriodo =
-            DATEFROMPARTS(
-                YEAR(@fecha),
-                MONTH(@fecha),
-                1
-            );
-    END;
+    SET @FechaInicioPeriodo=DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
 
     -------------------------------------------------------
     -- Proceso
     -------------------------------------------------------
-    WITH metas AS (
+    ;WITH metas AS (
         SELECT
             A.Agencia,
             A.Indicador,
