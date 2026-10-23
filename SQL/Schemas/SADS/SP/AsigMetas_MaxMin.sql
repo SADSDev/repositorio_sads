@@ -125,18 +125,18 @@ BEGIN
                     OVER (
                         PARTITION BY NUR, Semana_Mes
                     ) AS P15,
-                PERCENTILE_CONT(0.875)
+                PERCENTILE_CONT(0.80)
                     WITHIN GROUP (ORDER BY Error)
                     OVER (
                         PARTITION BY NUR, Semana_Mes
-                    ) AS P87
+                    ) AS Pmax
             FROM Simulaciones
         )
         SELECT
             NUR,
             Semana_Mes,
             MAX(P15) AS Minimo,
-            MAX(P87) AS Maximo
+            MAX(Pmax) AS Maximo
         INTO #maximo_minimo
         FROM Percentiles
         GROUP BY
