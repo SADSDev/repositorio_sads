@@ -190,17 +190,12 @@ BEGIN
     VentasGlobales AS
     (
         SELECT
+            VD.Fecha,
             VD.NUR,
             A.Agencia,
             VD.Cantidad,
-            CASE
-                WHEN GTP.Cliente IS NULL THEN 0
-                ELSE 1
-            END AS EsGTP,
-            CASE
-                WHEN V.NUR IS NULL THEN 0
-                ELSE 1
-            END AS EsMayoreo
+            CASE WHEN GTP.Cliente IS NULL THEN 0 ELSE 1 END AS EsGTP,
+            CASE WHEN V.NUR IS NULL THEN 0 ELSE 1 END AS EsMayoreo
         FROM PWST.POWERSTREET_Venta_Diaria VD
         LEFT JOIN PWST.CATALOGOS_Clientes_GTP GTP
             ON GTP.Cliente = VD.Cliente
@@ -213,7 +208,9 @@ BEGIN
             ON V.NUR = VD.NUR
             AND V.Grupo = 'MAYOREO'
         WHERE
-            VD.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+            VD.Fecha BETWEEN
+                DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+                AND @fecha
             AND
             (
                 @agencia IS NULL
@@ -228,8 +225,55 @@ BEGIN
     (
         SELECT
             Agencia,
-            SUM(CASE WHEN EsGTP = 1 THEN Cantidad ELSE 0 END) AS Avance_GTP,
-            SUM(CASE WHEN EsMayoreo = 1 THEN Cantidad ELSE 0 END) AS Avance_MM
+
+            SUM(
+                CASE
+                    WHEN EsGTP = 1
+                    AND Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+                        THEN Cantidad
+                    ELSE 0
+                END
+            ) AS Avance_GTP,
+
+            SUM(
+                CASE
+                    WHEN EsGTP = 1
+                    AND Fecha BETWEEN
+                            DATEFROMPARTS(
+                                YEAR(@fecha),
+                                MONTH(@fecha),
+                                1
+                            )
+                            AND @fecha
+                        THEN Cantidad
+                    ELSE 0
+                END
+            ) AS Acumulado_GTP,
+
+            SUM(
+                CASE
+                    WHEN EsMayoreo = 1
+                    AND Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+                        THEN Cantidad
+                    ELSE 0
+                END
+            ) AS Avance_MM,
+
+            SUM(
+                CASE
+                    WHEN EsMayoreo = 1
+                    AND Fecha BETWEEN
+                            DATEFROMPARTS(
+                                YEAR(@fecha),
+                                MONTH(@fecha),
+                                1
+                            )
+                            AND @fecha
+                        THEN Cantidad
+                    ELSE 0
+                END
+            ) AS Acumulado_MM
+
         FROM VentasGlobales
         GROUP BY Agencia
     ),
@@ -239,18 +283,55 @@ BEGIN
         SELECT
             R.Agencia,
             R.Zona,
+
             SUM(
                 CASE
-                    WHEN GTP.Cliente IS NOT NULL THEN VD.Cantidad
+                    WHEN GTP.Cliente IS NOT NULL
+                     AND VD.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+                        THEN VD.Cantidad
                     ELSE 0
                 END
             ) AS Avance_GTP,
+
             SUM(
                 CASE
-                    WHEN V.NUR IS NOT NULL THEN VD.Cantidad
+                    WHEN GTP.Cliente IS NOT NULL
+                     AND VD.Fecha BETWEEN
+                            DATEFROMPARTS(
+                                YEAR(@fecha),
+                                MONTH(@fecha),
+                                1
+                            )
+                            AND @fecha
+                        THEN VD.Cantidad
                     ELSE 0
                 END
-            ) AS Avance_MM
+            ) AS Acumulado_GTP,
+
+            SUM(
+                CASE
+                    WHEN V.NUR IS NOT NULL
+                     AND VD.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+                        THEN VD.Cantidad
+                    ELSE 0
+                END
+            ) AS Avance_MM,
+
+            SUM(
+                CASE
+                    WHEN V.NUR IS NOT NULL
+                     AND VD.Fecha BETWEEN
+                            DATEFROMPARTS(
+                                YEAR(@fecha),
+                                MONTH(@fecha),
+                                1
+                            )
+                            AND @fecha
+                        THEN VD.Cantidad
+                    ELSE 0
+                END
+            ) AS Acumulado_MM
+
         FROM RutasSector R
         INNER JOIN PWST.POWERSTREET_Venta_Diaria VD
             ON VD.NUR = R.NUR
@@ -259,7 +340,12 @@ BEGIN
         LEFT JOIN PWST.CATALOGOS_Vendedores V
             ON V.NUR = VD.NUR
             AND V.Grupo = 'MAYOREO'
-        WHERE VD.Fecha BETWEEN @FechaInicioPeriodo AND @fecha
+
+        WHERE
+            VD.Fecha BETWEEN
+                DATEFROMPARTS(YEAR(@fecha), MONTH(@fecha), 1)
+                AND @fecha
+
         GROUP BY
             R.Agencia,
             R.Zona
@@ -278,11 +364,27 @@ BEGIN
         S.Zona AS CLO,
         CAST(M.Meta_GTP AS INT) AS Meta_GTP,
         CAST(COALESCE(ASec.Avance_GTP, 0) AS DECIMAL(10,3)) AS Avance_GTP,
+        CAST(COALESCE(ASec.Acumulado_GTP, 0) AS DECIMAL(10,3)) AS Acumulado_GTP,
         CAST(
-            COALESCE(ASec.Avance_GTP, 0) * 1.0
-            / NULLIF(AG.Avance_GTP, 0)
+            CASE
+                WHEN COALESCE(AG.Avance_GTP, 0) = 0
+                    THEN 0
+                ELSE
+                    COALESCE(ASec.Avance_GTP, 0) * 1.0
+                    / AG.Avance_GTP
+            END
             AS DECIMAL(10,4)
         ) AS Alcance_GTP,
+        CAST(
+            CASE
+                WHEN COALESCE(AG.Acumulado_GTP, 0) = 0
+                    THEN 0
+                ELSE
+                    COALESCE(ASec.Acumulado_GTP, 0) * 1.0
+                    / AG.Acumulado_GTP
+            END
+            AS DECIMAL(10,4)
+        ) AS AlcanceAcum_GTP,
         CAST(
             CASE
                 WHEN COALESCE(AG.Avance_GTP, 0) = 0 THEN 0
@@ -297,13 +399,44 @@ BEGIN
             END
             AS DECIMAL(10,3)
         ) AS Excedente_GTP,
+        CAST(
+            CASE
+                WHEN COALESCE(AG.Acumulado_GTP, 0) = 0
+                    THEN 0
+                ELSE
+                    CASE
+                        WHEN AG.Acumulado_GTP > M.Meta_GTP
+                            THEN AG.Acumulado_GTP - M.Meta_GTP
+                        ELSE 0
+                    END
+                    * COALESCE(ASec.Acumulado_GTP, 0) * 1.0
+                    / AG.Acumulado_GTP
+            END
+            AS DECIMAL(10,3)
+        ) AS ExcedenteAcum_GTP,
         CAST(M.Meta_MM AS INT) AS Meta_MM,
         CAST(COALESCE(ASec.Avance_MM, 0) AS DECIMAL(10,3)) AS Avance_MM,
+        CAST(COALESCE(ASec.Acumulado_MM, 0) AS DECIMAL(10,3)) AS Acumulado_MM,
         CAST(
-            COALESCE(ASec.Avance_MM, 0) * 1.0
-            / NULLIF(M.Meta_MM, 0)
+            CASE
+                WHEN COALESCE(AG.Avance_MM, 0) = 0
+                    THEN 0
+                ELSE
+                    COALESCE(ASec.Avance_MM, 0) * 1.0
+                    / M.Meta_MM
+            END
             AS DECIMAL(10,4)
         ) AS Alcance_MM,
+        CAST(
+            CASE
+                WHEN COALESCE(AG.Acumulado_MM, 0) = 0
+                    THEN 0
+                ELSE
+                    COALESCE(ASec.Acumulado_MM, 0) * 1.0
+                    / M.Meta_MM
+            END
+            AS DECIMAL(10,4)
+        ) AS AlcanceAcum_MM,
         CAST(
             CASE
                 WHEN COALESCE(AG.Avance_MM, 0) = 0 THEN 0
@@ -317,7 +450,22 @@ BEGIN
                     / NULLIF(AG.Avance_MM, 0)
             END
             AS DECIMAL(10,3)
-        ) AS Excedente_MM
+        ) AS Excedente_MM,
+        CAST(
+            CASE
+                WHEN COALESCE(AG.Acumulado_MM, 0) = 0
+                    THEN 0
+                ELSE
+                    CASE
+                        WHEN AG.Acumulado_MM > M.Meta_MM
+                            THEN AG.Acumulado_MM - M.Meta_MM
+                        ELSE 0
+                    END
+                    * COALESCE(ASec.Acumulado_MM, 0) * 1.0
+                    / AG.Acumulado_MM
+            END
+            AS DECIMAL(10,3)
+        ) AS ExcedenteAcum_MM
     FROM Sectores S
     INNER JOIN MetasGlobales M
         ON M.Agencia = S.Agencia
@@ -335,34 +483,82 @@ BEGIN
         M.CLO,
         CAST(M.Meta_GTP AS INT) AS Meta_GTP,
         CAST(COALESCE(AG.Avance_GTP, 0) AS DECIMAL(10,3)) AS Avance_GTP,
+        CAST(COALESCE(AG.Acumulado_GTP, 0) AS DECIMAL(10,3)) AS Acumulado_GTP,
         CAST(
-            AG.Avance_GTP * 1.0
-            / NULLIF(M.Meta_GTP, 0)
+            CASE
+                WHEN COALESCE(M.Meta_GTP, 0) = 0
+                    THEN 0
+                ELSE
+                    COALESCE(AG.Avance_GTP, 0) * 1.0
+                    / M.Meta_GTP
+            END
             AS DECIMAL(10,4)
         ) AS Alcance_GTP,
         CAST(
             CASE
-                WHEN AG.Avance_GTP > M.Meta_GTP
-                    THEN AG.Avance_GTP - M.Meta_GTP
+                WHEN COALESCE(M.Meta_GTP, 0) = 0
+                    THEN 0
+                ELSE
+                    COALESCE(AG.Acumulado_GTP, 0) * 1.0
+                    / M.Meta_GTP
+            END
+            AS DECIMAL(10,4)
+        ) AS AlcanceAcum_GTP,
+        CAST(
+            CASE
+                WHEN COALESCE(AG.Acumulado_GTP, 0) > M.Meta_GTP
+                    THEN AG.Avance_GTP -(
+                        
+                    )
+                ELSE 0
+            END AS DECIMAL(10,3)
+        ) AS Excedente_GTP,
+        CAST(
+            CASE
+                WHEN COALESCE(AG.Acumulado_GTP, 0) > COALESCE(M.Meta_GTP, 0)
+                    THEN AG.Acumulado_GTP - COALESCE(M.Meta_GTP, 0)
                 ELSE 0
             END
             AS DECIMAL(10,3)
-        ) AS Excedente_GTP,
+        ) AS ExcedenteAcum_GTP,
         CAST(M.Meta_MM AS INT) AS Meta_MM,
         CAST(COALESCE(AG.Avance_MM, 0) AS DECIMAL(10,3)) AS Avance_MM,
+        CAST(COALESCE(AG.Acumulado_MM, 0) AS DECIMAL(10,3)) AS Acumulado_MM,
         CAST(
-            AG.Avance_MM * 1.0
-            / NULLIF(M.Meta_MM, 0)
+            CASE
+                WHEN COALESCE(M.Meta_MM, 0) = 0
+                    THEN 0
+                ELSE
+                    COALESCE(AG.Avance_MM, 0) * 1.0
+                    / M.Meta_MM
+            END
             AS DECIMAL(10,4)
         ) AS Alcance_MM,
         CAST(
             CASE
-                WHEN AG.Avance_MM > M.Meta_MM
+                WHEN COALESCE(M.Meta_MM, 0) = 0
+                    THEN 0
+                ELSE
+                    COALESCE(AG.Acumulado_MM, 0) * 1.0
+                    / M.Meta_MM
+            END
+            AS DECIMAL(10,4)
+        ) AS AlcanceAcum_MM,
+        CAST(
+            CASE
+                WHEN COALESCE(AG.Avance_MM, 0) > M.Meta_MM
                     THEN AG.Avance_MM - M.Meta_MM
+                ELSE 0
+            END AS DECIMAL(10,3)
+        ) AS Excedente_MM,
+        CAST(
+            CASE
+                WHEN COALESCE(AG.Acumulado_MM, 0) > COALESCE(M.Meta_MM, 0)
+                    THEN AG.Acumulado_MM - COALESCE(M.Meta_MM, 0)
                 ELSE 0
             END
             AS DECIMAL(10,3)
-        ) AS Excedente_MM
+        ) AS ExcedenteAcum_MM
     FROM MetasGlobales M
     LEFT JOIN AvancesGlobales AG
         ON AG.Agencia = M.Agencia
