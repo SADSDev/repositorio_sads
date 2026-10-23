@@ -1,8 +1,8 @@
-#Este proceso se encarga de procesar para cada una de las
+#Este proceso para cada una de las
 #rutas evaluables, obtener la diferencia entre el comportamiento
 #obtenido del MART vs el real durante cada uno de los 4 meses
 #anteriores al actual, para proceder a simularlos y obtener un 
-#intervalo de confianza
+#una cantidad determinada de simulaciones por cada dia y ruta
 
 #=================================================
 #LIBRERIAS 
@@ -209,6 +209,7 @@ def obtener_dfs_sql(
                 SELECT DISTINCT
                     NUR
                 FROM {schema}.{tabla_rutas} 
+                WHERE Evaluable=1
             ),
 
             ventas_diarias AS (
