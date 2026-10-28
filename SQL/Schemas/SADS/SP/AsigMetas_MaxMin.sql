@@ -9,6 +9,17 @@ BEGIN
 
     SET NOCOUNT ON;
 
+    DECLARE @MesInicio DATE;
+    DECLARE @MesSiguiente DATE;
+
+    SET @MesInicio = DATEADD(
+        MONTH,
+        @mes - 1,
+        DATEADD(YEAR, @anio - 1900, 0)
+    );
+
+    SET @MesSiguiente = DATEADD(MONTH, 1, @MesInicio);
+
     IF NOT EXISTS
     (
         SELECT 1
@@ -31,10 +42,10 @@ BEGIN
                     (
                         DATEPART(
                             WEEKDAY,
-                            DATEFROMPARTS(
-                                YEAR(M.Fecha),
-                                MONTH(M.Fecha),
-                                1
+                            DATEADD(
+                                MONTH,
+                                DATEDIFF(MONTH, 0, M.Fecha),
+                                0
                             )
                         )
                         + @@DATEFIRST - 2
@@ -49,8 +60,8 @@ BEGIN
         WHERE
             M.Indicador = 'VOLUMEN'
             AND M.Fecha BETWEEN
-                DATEFROMPARTS(@anio, @mes, 1)
-                AND EOMONTH(DATEFROMPARTS(@anio, @mes, 1))
+                @MesInicio
+                AND DATEADD(DAY, -1, @MesSiguiente)
             AND A.Agencia = @agencia
         GROUP BY
             M.NUR,
@@ -61,11 +72,7 @@ BEGIN
                     (
                         DATEPART(
                             WEEKDAY,
-                            DATEFROMPARTS(
-                                YEAR(M.Fecha),
-                                MONTH(M.Fecha),
-                                1
-                            )
+                            DATEADD(MONTH, DATEDIFF(MONTH, 0, M.Fecha), 0)
                         )
                         + @@DATEFIRST - 2
                     ) % 7
@@ -89,10 +96,10 @@ BEGIN
                         (
                             DATEPART(
                                 WEEKDAY,
-                                DATEFROMPARTS(
-                                    YEAR(S.Fecha),
-                                    MONTH(S.Fecha),
-                                    1
+                                DATEADD(
+                                    MONTH,
+                                    DATEDIFF(MONTH, 0, S.Fecha),
+                                    0
                                 )
                             )
                             + @@DATEFIRST - 2
@@ -108,29 +115,94 @@ BEGIN
             ) N
                 ON N.NUR = S.NUR
             WHERE
-                S.Fecha >= DATEFROMPARTS(@anio, @mes, 1)
-                AND S.Fecha < DATEADD(
-                    MONTH,
-                    1,
-                    DATEFROMPARTS(@anio, @mes, 1)
-                )
+                S.Fecha >= @MesInicio
+                AND S.Fecha < @MesSiguiente
+        ),
+        Ordenadas AS
+        (
+            SELECT
+                NUR,
+                Semana_Mes,
+                Error,
+                ROW_NUMBER() OVER
+                (
+                    PARTITION BY NUR, Semana_Mes
+                    ORDER BY Error
+                ) AS Orden,
+                COUNT(*) OVER
+                (
+                    PARTITION BY NUR, Semana_Mes
+                ) AS Total
+            FROM Simulaciones
+        ),
+        Posiciones AS
+        (
+            SELECT DISTINCT
+                NUR,
+                Semana_Mes,
+                CAST(1 + (Total - 1) * 0.15 AS DECIMAL(19,10)) AS Pos15,
+                CAST(1 + (Total - 1) * 0.80 AS DECIMAL(19,10)) AS Pos80
+            FROM Ordenadas
+        ),
+        Valores AS
+        (
+            SELECT
+                O.NUR,
+                O.Semana_Mes,
+                P.Pos15,
+                P.Pos80,
+                MAX(
+                    CASE
+                        WHEN O.Orden = FLOOR(P.Pos15)
+                            THEN O.Error
+                    END
+                ) AS P15Inferior,
+                MAX(
+                    CASE
+                        WHEN O.Orden = CEILING(P.Pos15)
+                            THEN O.Error
+                    END
+                ) AS P15Superior,
+                MAX(
+                    CASE
+                        WHEN O.Orden = FLOOR(P.Pos80)
+                            THEN O.Error
+                    END
+                ) AS P80Inferior,
+                MAX(
+                    CASE
+                        WHEN O.Orden = CEILING(P.Pos80)
+                            THEN O.Error
+                    END
+                ) AS P80Superior
+            FROM Ordenadas O
+            INNER JOIN Posiciones P
+                ON P.NUR = O.NUR
+                AND P.Semana_Mes = O.Semana_Mes
+            GROUP BY
+                O.NUR,
+                O.Semana_Mes,
+                P.Pos15,
+                P.Pos80
         ),
         Percentiles AS
         (
             SELECT
                 NUR,
                 Semana_Mes,
-                PERCENTILE_CONT(0.15)
-                    WITHIN GROUP (ORDER BY Error)
-                    OVER (
-                        PARTITION BY NUR, Semana_Mes
-                    ) AS P15,
-                PERCENTILE_CONT(0.80)
-                    WITHIN GROUP (ORDER BY Error)
-                    OVER (
-                        PARTITION BY NUR, Semana_Mes
-                    ) AS Pmax
-            FROM Simulaciones
+                CAST(
+                    P15Inferior
+                    + (Pos15 - FLOOR(Pos15))
+                        * (P15Superior - P15Inferior)
+                    AS DECIMAL(18,6)
+                ) AS P15,
+                CAST(
+                    P80Inferior
+                    + (Pos80 - FLOOR(Pos80))
+                        * (P80Superior - P80Inferior)
+                    AS DECIMAL(18,6)
+                ) AS Pmax
+            FROM Valores
         )
         SELECT
             NUR,
@@ -156,7 +228,7 @@ BEGIN
             PMax
         )
         SELECT
-            DATEFROMPARTS(@anio, @mes, 1),
+            @MesInicio,
             @agencia,
             MM.NUR,
             MM.Semana_Mes,
