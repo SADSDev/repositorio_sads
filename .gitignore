@@ -13,6 +13,8 @@ dist/
 # Entorno virtual
 .venv/
 venv/
+.env.*
+!.env.example
 
 # Variables de entorno
 .env
