@@ -42,6 +42,7 @@ SELECT
     [Entregados Orden Original],
     Fullfillment
 FROM #Pedidos
-ORDER BY TRY_CONVERT(DATE, Fecha, 105) ASC;
+ORDER BY
+    CONVERT(DATETIME, Fecha) ASC;
 
 DROP TABLE #Pedidos;
