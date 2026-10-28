@@ -3,140 +3,115 @@ CREATE OR ALTER PROCEDURE PWST.SADS_AsigMetas_SubirDatos
     @anio INT,
     @mes INT,
     @agencia INT,
-    @datos VARCHAR(MAX)
+    @MetasAgencia [PWST].[AsigMetasAgenciaInstancia] READONLY,
+    @MetasRuta [PWST].[AsigMetasRutaInstancia] READONLY
 ) 
 AS      
 BEGIN 
 
     SET NOCOUNT ON;
-    
-    -- Metas globales
+    SET XACT_ABORT ON;
+
+    DECLARE @MesFecha DATE;
+
+    SET @MesFecha = DATEADD(
+        MONTH,
+        @mes - 1,
+        DATEADD(YEAR, @anio - 1900, 0)
+    );
+
+    -- Metas globales recibidas en el TVP.
     SELECT
         Agencia,
-        DATEFROMPARTS(@anio, @mes, 1) AS Mes,
+        @MesFecha AS Mes,
         1 AS CategoriaId,
         Indicador,
         Valor_Meta
     INTO #MetasAgencia
-    FROM OPENJSON(@datos)
-    WITH
-    (
-        Agencia INT '$.Agencia',
-        MetaGT  DECIMAL(18,4) '$.MetasAgencia.MetaGT', 
-        MetaGTP DECIMAL(18,4) '$.MetasAgencia.MetaGTP',
-        MetaMM DECIMAL(18,4) '$.MetasAgencia.MetaMM'
-    ) A
-    CROSS APPLY
-    (
-        VALUES
-            ('VOLUMEN', A.MetaGT),
-            ('VOLUMEN GTP', A.MetaGTP),
-            ('VOLUMEN MM', A.MetaMM)
-    ) V(Indicador, Valor_Meta);
+    FROM @MetasAgencia
+    WHERE Agencia = @agencia;
 
 
-    -- METAS DIARIAS
+    -- Metas diarias por NUR y marca, recibidas en el TVP.
     SELECT
-        R.NUR,
-        M.Fecha,
+        NUR,
+        Fecha,
         1 AS CategoriaId,
-        'VOLUMEN' AS Indicador,
-        M.Meta AS Valor_Meta
+        Indicador,
+        Valor_Meta
     INTO #MetasDiarias
-    FROM OPENJSON(@Datos, '$.Rutas')
-    WITH
-    (
-        NUR VARCHAR(50) '$.NUR',
-        MetaVolumen NVARCHAR(MAX) '$.MetaVolumen' AS JSON
-    ) R
-    CROSS APPLY OPENJSON(R.MetaVolumen)
-    WITH
-    (
-        Fecha DATE '$.Fecha',
-        Meta DECIMAL(18,4) '$.Meta'
-    ) M
-
-    UNION ALL
-
-    SELECT
-        R.NUR,
-        M.Fecha,
-        1 AS CategoriaId,
-        B.Marca AS Indicador,
-        M.Meta AS Valor_Meta
-    FROM OPENJSON(@Datos, '$.Rutas')
-    WITH
-    (
-        NUR VARCHAR(50) '$.NUR',
-        MetasMarca NVARCHAR(MAX) '$.MetasMarca' AS JSON
-    ) R
-
-    CROSS APPLY OPENJSON(R.MetasMarca)
-    WITH
-    (
-        Marca VARCHAR(300) '$.Marca',
-        MetaDiaria NVARCHAR(MAX) '$.MetaDiaria' AS JSON
-    ) B
-
-    CROSS APPLY OPENJSON(B.MetaDiaria)
-    WITH
-    (
-        Fecha DATE '$.Fecha',
-        Meta DECIMAL(18,4) '$.Meta'
-    ) M;
+    FROM @MetasRuta;
 
 
-    -- DELETES PREVIOS
-    DELETE FROM PWST.SADS_SegOper_MetasAgencia
-    WHERE YEAR(Mes) = @anio
-      AND MONTH(Mes) = @mes
-      AND Agencia = @agencia
-      AND CategoriaId=1;
+    BEGIN TRY
+        BEGIN TRANSACTION;
 
+        -- DELETES PREVIOS
+        DELETE FROM PWST.SADS_SegOper_MetasAgencia
+        WHERE YEAR(Mes) = @anio
+          AND MONTH(Mes) = @mes
+          AND Agencia = @agencia
+          AND CategoriaId = 1;
 
-    DELETE M
-    FROM PWST.SADS_SegOper_Metas M
-    INNER JOIN PWST.CATALOGOS_Agencias A
-        ON M.NUR LIKE A.Clave_NUR + '%'
-    WHERE YEAR(M.Fecha) = @anio
-      AND MONTH(M.Fecha) = @mes
-      AND A.Agencia = @agencia
-      AND CategoriaId=1;
+        DELETE M
+        FROM PWST.SADS_SegOper_Metas M
+        INNER JOIN PWST.CATALOGOS_Agencias A
+            ON M.NUR LIKE A.Clave_NUR + '%'
+        WHERE YEAR(M.Fecha) = @anio
+          AND MONTH(M.Fecha) = @mes
+          AND A.Agencia = @agencia
+          AND CategoriaId = 1;
 
+        -- INSERCIONES DE DATOS
+        INSERT INTO PWST.SADS_SegOper_Metas
+        (
+            Fecha,
+            NUR,
+            CategoriaId,
+            Indicador,
+            Valor_Meta
+        )
+        SELECT
+            Fecha,
+            NUR,
+            CategoriaId,
+            Indicador,
+            Valor_Meta
+        FROM #MetasDiarias;
 
-    -- INSERCIONES DE DATOS
-    INSERT INTO PWST.SADS_SegOper_Metas
-    (
-        Fecha,
-        NUR, 
-        CategoriaId,
-        Indicador,
-        Valor_Meta
-    )
-    SELECT
-        Fecha,
-        NUR, 
-        CategoriaId,
-        Indicador,
-        Valor_Meta
-    FROM #MetasDiarias;
+        INSERT INTO PWST.SADS_SegOper_MetasAgencia
+        (
+            Mes,
+            Agencia,
+            CategoriaId,
+            Indicador,
+            Valor_Meta
+        )
+        SELECT
+            Mes,
+            Agencia,
+            CategoriaId,
+            Indicador,
+            Valor_Meta
+        FROM #MetasAgencia;
 
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
 
-    INSERT INTO PWST.SADS_SegOper_MetasAgencia
-    (
-        Mes,
-        Agencia,
-        CategoriaId,
-        Indicador,
-        Valor_Meta
-    )
-    SELECT
-        Mes,
-        Agencia,
-        CategoriaId,
-        Indicador,
-        Valor_Meta
-    FROM #MetasAgencia;
+        DECLARE @ErrorMensaje NVARCHAR(4000);
+        DECLARE @ErrorSeveridad INT;
+        DECLARE @ErrorEstado INT;
+
+        SELECT
+            @ErrorMensaje = ERROR_MESSAGE(),
+            @ErrorSeveridad = ERROR_SEVERITY(),
+            @ErrorEstado = ERROR_STATE();
+
+        RAISERROR(@ErrorMensaje, @ErrorSeveridad, @ErrorEstado);
+    END CATCH;
 
 END;
 GO              
