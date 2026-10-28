@@ -32,7 +32,8 @@ BEGIN
             WHERE NombreCompleto = @nombreCompleto OR NombreUsuario=@usuario  
         )
         BEGIN  
-            THROW 50001, 'Ya existe un usuario con ese Nombr.', 1;  
+            RAISERROR('Ya existe un usuario con ese Nombre.', 16, 1);
+            RETURN;
         END;  
         --validar que hayan sido agregados datos necesarios para funcionar
         IF NOT EXISTS
@@ -42,24 +43,28 @@ BEGIN
             WHERE RolId = @RolId
         )
         BEGIN
-            THROW 50001, 'Ese Rol no existe', 1;
+            RAISERROR('Ese Rol no existe', 16, 1);
+            RETURN;
         END;
 
         -- Validar que el usuario tenga los filtros necesarios
         IF @RolId = 6
         AND (@Agencia IS NULL OR @Grupo IS NULL OR @NUR IS NULL)
         BEGIN
-            THROW 50001, 'El tipo de usuario escogido necesita agencia, grupo y ruta', 1;
+            RAISERROR('El tipo de usuario escogido necesita agencia, grupo y ruta', 16, 1);
+            RETURN;
         END;
         IF @RolId = 5
         AND (@Agencia IS NULL OR @Grupo IS NULL)
         BEGIN
-            THROW 50001, 'El tipo de usuario escogido necesita agencia y grupo', 1;
+            RAISERROR('El tipo de usuario escogido necesita agencia y grupo', 16, 1);
+            RETURN;
         END;
         IF @RolId = 4
         AND @Agencia IS NULL
         BEGIN
-            THROW 50001, 'El tipo de usuario escogido necesita agencia', 1;
+            RAISERROR('El tipo de usuario escogido necesita agencia', 16, 1);
+            RETURN;
         END;
         
         -------------------------------------------------------  
@@ -68,19 +73,28 @@ BEGIN
         IF @NUR IS NOT NULL  
         BEGIN  
             SET @Ruta =  
-                CONCAT(  
-                    'R',  
+                'R' +
                     SUBSTRING(  
                         @NUR,  
                         PATINDEX('%[A-Z]%', @NUR) + 1,  
                         LEN(@NUR)  
-                    )  
-                );  
+                    );
         END  
         ELSE  
         BEGIN  
             SET @Ruta = NULL;  
         END;    
+
+        -- Las listas deben contener solamente enteros separados por comas.
+        SET @permisos = REPLACE(ISNULL(@permisos, ''), ' ', '');
+        SET @recursos = REPLACE(ISNULL(@recursos, ''), ' ', '');
+
+        IF @permisos LIKE '%[^0-9,]%'
+           OR @recursos LIKE '%[^0-9,]%'
+        BEGIN
+            RAISERROR('Permisos y recursos deben ser listas de enteros separados por comas.', 16, 1);
+            RETURN;
+        END;
 
         -------------------------------------------------------  
         -- Iniciar transacción  de proceso de alta usuario
@@ -138,13 +152,56 @@ BEGIN
         -------------------------------------------------------  
         -- 3. Copiar permisos  y recursos del rol al usuario  
         -------------------------------------------------------  
+        DECLARE @PermisosXml XML;
+        DECLARE @RecursosXml XML;
+
+        SET @PermisosXml = CAST(
+            '<root><item>'
+            + REPLACE(@permisos, ',', '</item><item>')
+            + '</item></root>'
+            AS XML
+        );
+
+        SET @RecursosXml = CAST(
+            '<root><item>'
+            + REPLACE(@recursos, ',', '</item><item>')
+            + '</item></root>'
+            AS XML
+        );
+
+        ;WITH Permisos AS
+        (
+            SELECT
+                ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS Posicion,
+                LTRIM(RTRIM(Nodo.Item.value('.', 'VARCHAR(20)'))) AS Valor
+            FROM @PermisosXml.nodes('/root/item') Nodo(Item)
+        ),
+        Recursos AS
+        (
+            SELECT
+                ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS Posicion,
+                LTRIM(RTRIM(Nodo.Item.value('.', 'VARCHAR(20)'))) AS Valor
+            FROM @RecursosXml.nodes('/root/item') Nodo(Item)
+        )
         SELECT
-            TRY_CAST(P.[value] AS INT) AS PermisoId,
-            TRY_CAST(R.[value] AS INT) AS RecursoId
+            CASE
+                WHEN P.Valor <> ''
+                 AND P.Valor NOT LIKE '%[^0-9]%'
+                 AND LEN(P.Valor) <= 9
+                THEN CONVERT(INT, P.Valor)
+                ELSE NULL
+            END AS PermisoId,
+            CASE
+                WHEN R.Valor <> ''
+                 AND R.Valor NOT LIKE '%[^0-9]%'
+                 AND LEN(R.Valor) <= 9
+                THEN CONVERT(INT, R.Valor)
+                ELSE NULL
+            END AS RecursoId
         INTO #RecursosPermisos
-        FROM OPENJSON('["' + REPLACE(@permisos, ',', '","') + '"]') P
-        INNER JOIN OPENJSON('["' + REPLACE(@recursos, ',', '","') + '"]') R
-            ON P.[key] = R.[key];
+        FROM Permisos P
+        INNER JOIN Recursos R
+            ON P.Posicion = R.Posicion;
             
         
         INSERT INTO PWST.SEGURIDAD_UsuarioPermisos
@@ -163,8 +220,9 @@ BEGIN
 
             UNION
 
-            SELECT TRY_CAST(PermisoId AS INT)
+            SELECT PermisoId
             FROM #RecursosPermisos
+            WHERE PermisoId IS NOT NULL
         ) AS Permisos;
 
         INSERT INTO PWST.SEGURIDAD_UsuarioRecursos
@@ -183,8 +241,9 @@ BEGIN
 
             UNION
 
-            SELECT TRY_CAST(RecursoId AS INT)
+            SELECT RecursoId
             FROM #RecursosPermisos
+            WHERE RecursoId IS NOT NULL
         ) AS Recursos;
   
   
@@ -211,8 +270,17 @@ BEGIN
         IF @@TRANCOUNT > 0  
             ROLLBACK TRANSACTION;  
   
-        THROW;  
+        DECLARE @ErrorMensaje NVARCHAR(4000);
+        DECLARE @ErrorSeveridad INT;
+        DECLARE @ErrorEstado INT;
+
+        SELECT
+            @ErrorMensaje = ERROR_MESSAGE(),
+            @ErrorSeveridad = ERROR_SEVERITY(),
+            @ErrorEstado = ERROR_STATE();
+
+        RAISERROR(@ErrorMensaje, @ErrorSeveridad, @ErrorEstado);
   
     END CATCH  
   
-END;  
+END;
