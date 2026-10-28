@@ -82,7 +82,13 @@ SET NOCOUNT ON;
             FROM PWST.CATALOGOS_Vendedores V
             INNER JOIN PWST.CATALOGOS_Agencias A
                 ON V.NUR LIKE A.Clave_NUR + '%'
-            WHERE A.Agencia = TRY_CONVERT(INT, @agencia)
+            WHERE A.Agencia =
+                CASE
+                    WHEN @agencia <> ''
+                     AND @agencia NOT LIKE '%[^0-9]%'
+                    THEN CONVERT(INT, @agencia)
+                    ELSE NULL
+                END
               AND V.Evaluable=1
               AND NOT EXISTS
               (
@@ -101,7 +107,13 @@ SET NOCOUNT ON;
             FROM PWST.CATALOGOS_Vendedores V
             INNER JOIN PWST.CATALOGOS_Agencias A
                 ON V.NUR LIKE A.Clave_NUR + '%'
-            WHERE A.Agencia = TRY_CONVERT(INT, @agencia)
+            WHERE A.Agencia =
+                CASE
+                    WHEN @agencia <> ''
+                     AND @agencia NOT LIKE '%[^0-9]%'
+                    THEN CONVERT(INT, @agencia)
+                    ELSE NULL
+                END
               AND V.Grupo = 'MAYOREO'
         )
         SELECT
@@ -178,7 +190,13 @@ SET NOCOUNT ON;
                     0
                 )
         FROM PWST.SADS_SegOper_MetasAgencia
-        WHERE Agencia = TRY_CONVERT(INT, @agencia)
+        WHERE Agencia =
+            CASE
+                WHEN @agencia <> ''
+                 AND @agencia NOT LIKE '%[^0-9]%'
+                THEN CONVERT(INT, @agencia)
+                ELSE NULL
+            END
           AND Mes = @Mes;
 
         SELECT
