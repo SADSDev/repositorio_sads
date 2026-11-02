@@ -1,0 +1,11 @@
+INSTRUCCIONES PARA MODULO DE SIMULACIONES:
+
+1.-UBICARSE EN CARPETA BatchProcess Y ACTIVER VENV: .\.venv\Scripts\activate
+
+2.-SUBIR A CARPETA RAIZ "Python"
+EJEMPLO: D:\One_Drive_Edson\OneDrive - Universidad Autonoma de Nuevo León\EDSON\SODISA\Bibucket\repositorio_sads\python>
+
+2.-CONFIGURAR PYTHONPATH A: $env:PYTHONPATH="$PWD\fastAPI\Modelos"
+
+3.-EJECUTAR ARCHIVO.PY DE SIMULACIONES DESEADO COMO MODULO
+EJEMPLO: python -m batchProcess.Simulaciones.Ventas
