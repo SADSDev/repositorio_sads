@@ -6,12 +6,12 @@ from fastapi import APIRouter
 #---------------------------------------------
 # IMPORTS
 #---------------------------------------------
-from MAM.modeloMAM import modeloMAM
+from fastAPI.Modelos.MAM.modeloMAM import modeloMAM
 
-from MART.modeloMART import modeloMART
+from fastAPI.Modelos.MART.modeloMART import modeloMART
 
-from Procesos.PlanComercial_subir_a_SQL import subir_datos_sql_plancomercial
-from Schemas.request import PlanComercialRequest
+from fastAPI.Modelos.Procesos.PlanComercial_subir_a_SQL import subir_datos_sql_plancomercial
+from fastAPI.Modelos.Schemas.request import PlanComercialRequest
 #--------------------------------------------------------
 # CONFIG API PLAN COMERCIAL
 #--------------------------------------------------------

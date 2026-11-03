@@ -9,7 +9,7 @@ import pandas as pd
 #----------------------------------------------------
 # IMPORTS
 #----------------------------------------------------
-from Config.conexion_SQL import (
+from fastAPI.Modelos.Config.conexion_SQL import (
     manejar_error_conexion_sql,
     obtener_motor
 )

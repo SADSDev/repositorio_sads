@@ -11,14 +11,14 @@ from sqlalchemy.exc import InterfaceError, OperationalError
 #----------------------------
 #IMPORTS
 #---------------------------
-from .parametros import (
+from fastAPI.Modelos.Config.parametros import (
     servidor,
     bd,
     usuario,
     contrasena
 )
 
-from Core.exceptions import ErrorConexionSQL
+from fastAPI.Modelos.Core.exceptions import ErrorConexionSQL
 
 #------------------------------------------------------------------------
 # MANEJO DE ERRORES DE CONEXIÓN SQL

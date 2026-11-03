@@ -10,8 +10,8 @@ from fastapi.responses import JSONResponse
 #------------------------------------------------------------------------
 # IMPORTS
 #------------------------------------------------------------------------
-from MAM.modeloMAM import modeloMAM
-from MAM.Schemas.request import MAMRequest
+from fastAPI.Modelos.MAM.modeloMAM import modeloMAM
+from fastAPI.Modelos.MAM.Schemas.request import MAMRequest
 
 
 #------------------------------------------------------------------------

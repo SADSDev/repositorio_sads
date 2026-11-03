@@ -14,8 +14,8 @@ import pandas as pd
 #----------------------------------------------------------------
 # IMPORTS 
 #----------------------------------------------------------------
-from MART.procesos.procesoDatosMART import obtener_datos_modelo
-from MART.Schemas.request import MARTRequest
+from fastAPI.Modelos.MART.procesos.procesoDatosMART import obtener_datos_modelo
+from fastAPI.Modelos.MART.Schemas.request import MARTRequest
 
 #-----------------------------------
 # OBTENCION DE DATOS DEL MODELO
@@ -65,8 +65,8 @@ def normalizacion_promedios(df_calendario_rutas: pd.DataFrame,
     .assign(
         Peso_Esperado=lambda x:
             x["Prom_Suavizado"] /
-            x.groupby("NUR")["Prom_Suavizado"]
-             .transform("sum")
+            x.groupby("NUR")["Prom_Suavizado"].transform("sum"),
+        Fecha=lambda x: pd.to_datetime(x["Fecha"]).dt.strftime("%Y-%m-%d")
     )
     .sort_values(
         ["NUR","Fecha"],

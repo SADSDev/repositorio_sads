@@ -11,9 +11,9 @@ import pandas as pd
 #-----------------------------------
 # IMPORTS
 #-----------------------------------
-from MAM.procesos.procesoDatosMAM import obtener_datos_modelo
-from MAM.Schemas.request import MAMRequest
-from Core.redondear import redondear_conservando_total
+from fastAPI.Modelos.MAM.procesos.procesoDatosMAM import obtener_datos_modelo
+from fastAPI.Modelos.MAM.Schemas.request import MAMRequest
+from fastAPI.Modelos.Core.redondear import redondear_conservando_total
 
 #-----------------------------------
 # OBTENCION DE DATOS DEL MODELO

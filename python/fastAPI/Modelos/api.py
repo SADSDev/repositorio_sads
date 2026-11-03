@@ -9,14 +9,14 @@ from fastapi import FastAPI
 #------------------------------------------------------------------------
 
 #excepciones
-from Core.exceptions import registrar_manejadores
+from fastAPI.Modelos.Core.exceptions import registrar_manejadores
 
 #modelos
-from MAM.routes import router as mam_router
-from MART.routes import router as mart_router
+from fastAPI.Modelos.MAM.routes import router as mam_router
+from fastAPI.Modelos.MART.routes import router as mart_router
 
 #completos
-from routes import router as plan_comercial_router
+from fastAPI.Modelos.routes import router as plan_comercial_router
 
 
 #------------------------------------------------------------------------

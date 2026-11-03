@@ -9,8 +9,8 @@ import pandas as pd
 #----------------------------------------------------
 # IMPORTS
 #----------------------------------------------------
-from MAM.datos.eficienciaVentaMes import clientes_unicos_por_mes
-from MAM.datos.ticketEsperado import venta_por_cliente
+from fastAPI.Modelos.MAM.datos.eficienciaVentaMes import clientes_unicos_por_mes
+from fastAPI.Modelos.MAM.datos.ticketEsperado import venta_por_cliente
 
 
 

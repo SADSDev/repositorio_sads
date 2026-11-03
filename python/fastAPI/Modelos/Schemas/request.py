@@ -1,9 +1,18 @@
+#===============================================
+# LIBRERIAS
+#===============================================
 from pydantic import BaseModel
 
-from MAM.Schemas.request import MAMRequest
-from MART.Schemas.request import MARTRequest
+#===============================================
+# IMPORTS 
+#===============================================
+from fastAPI.Modelos.MAM.Schemas.request import MAMRequest
+from fastAPI.Modelos.MART.Schemas.request import MARTRequest
 
 
+#===============================================
+# MODELO BASE PLAN COMERCIAL (COMBINACION MAM Y MART)
+#================================================
 class PlanComercialRequest(BaseModel):
     mam: MAMRequest
     mart: MARTRequest
