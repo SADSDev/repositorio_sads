@@ -1,17 +1,20 @@
 INSTRUCCIONES PARA MODULO DE SIMULACIONES:
 
-1.-UBICARSE EN CARPETA BatchProcess Y ACTIVER VENV: .\.venv\Scripts\activate
+1.- UBICARSE EN CARPETA RAIZ repositorio_sads/python
 
-2.-SUBIR A CARPETA RAIZ "Python"
-EJEMPLO: D:\One_Drive_Edson\OneDrive - Universidad Autonoma de Nuevo León\EDSON\SODISA\Bibucket\repositorio_sads\python>
+2.- Crear .venv DISTINTIVO DEL SUBPROYECTO batchProcess
+EJEMPLO: .venv_batchProcess
 
-2.-CONFIGURAR PYTHONPATH A: $env:PYTHONPATH="$PWD\fastAPI\Modelos"
+3.- ACTIVAR .venv DISTINTIVO: .\.venv_batch\Scripts\Activate.ps1 
 
-3.-EJECUTAR ARCHIVO.PY DE SIMULACIONES DESEADO COMO MODULO
+4.-EJECUTAR ARCHIVO.PY DE SIMULACIONES DESEADO COMO MODULO
 EJEMPLO: python -m batchProcess.Simulaciones.Ventas
+
+
 
 ***CONSIDERACIONES****
 
--CREAR VENV CON LAS LIBRERIAS EN REQUIREMENTS.text
--PYTHON 3.12.x
--CONTAR CON TODAS LAS CARPETAS Y ARCHIVOS DE LA CARPETA "python"
+-CREAR VENV CON LAS LIBRERIAS DEL requirements.txt de cada subproyecto
+-PYTHON >= 3.12.x 
+-CONTAR CON TODOS LOS ARCHIVOS DE LA CARPETA "python" DEL REPOSITORIO
+"repositorio_sads"
