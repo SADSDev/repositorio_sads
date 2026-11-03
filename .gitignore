@@ -13,11 +13,13 @@ dist/
 # Entorno virtual
 .venv/
 venv/
-.env.*
-!.env.example
+.venv_fastAPI
+.venv_batchProcess
 
 # Variables de entorno
 .env
+.env.*
+!.env.example
 
 # IDE
 .vscode/
