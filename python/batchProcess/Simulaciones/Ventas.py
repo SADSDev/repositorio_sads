@@ -14,7 +14,7 @@ from sqlalchemy import text
 from dateutil.relativedelta import relativedelta
 from tqdm import tqdm
 import os
-
+import requests
 #=================================================
 #IMPORTS
 #=================================================
@@ -24,8 +24,6 @@ from batchProcess.Simulaciones.Config.conexion_SQL import(
     manejar_error_conexion_sql,
     obtener_motor
 )
-from fastAPI.Modelos.MART.Schemas.request import MARTRequest
-from fastAPI.Modelos.MART.modeloMART import modeloMART
 
 #variables de entorno
 schema=os.getenv("SCHEMA")
@@ -38,7 +36,7 @@ tabla_rutas=os.getenv("TABLA_RUTAS")
 tabla_clientesgtp=os.getenv("TABLA_CLIENTESGTP")
 tabla_agencias=os.getenv("TABLA_AGENCIAS")
 tabla_metas_diarias=os.getenv("TABLA_METASDIARIAS")
-
+fastapi_url=os.getenv("FASTAPI_URL")
 #======================================================
 # FUNCIONES
 #======================================================
@@ -322,9 +320,16 @@ resultados = []
 for agencia in agencias_a_trabajar:
 
     for mes in meses:
-
-        request = MARTRequest(mes=mes.month,anio=mes.year,agencia=agencia)
-        df_mart = modeloMART(request=request)
+        payload={
+            "mes":mes.month,
+            "anio":mes.year,
+            "agencia":agencia
+        }
+        request=requests.post(f"{fastapi_url}/mart", json=payload, timeout=60)
+        print(f"ejecutando MART de agencia: {agencia}, periodo: {mes.month}-{mes.year}")
+        request.raise_for_status()
+        
+        df_mart = pd.DataFrame(request.json())
         resultados.append(df_mart)
 
 df_mart_final = pd.concat(resultados,ignore_index=True)
@@ -584,7 +589,7 @@ for agencia in agencias_a_trabajar:
             resultados_ruta,
             ignore_index=True
         )
-
+        
         subir_datos_sql(
             df_simulaciones=df_ruta,
             schema=schema,
