@@ -2,13 +2,16 @@
 #LIBRERIAS
 #-----------------------------------------------------------------------
 from dotenv import load_dotenv
+from pathlib import Path
 
 import os
 
 #-----------------------------------------------------------------------
 # ENTORNO
 #-----------------------------------------------------------------------
-load_dotenv()
+BASE_DIRECTORIO=Path(__file__).resolve().parents[1]#sube 2 niveles hacia carpeta "Simulaciones"
+load_dotenv(BASE_DIRECTORIO / ".env")
+
 
 #---------------------------------------------------------------------
 # PARAMETROS
