@@ -1,15 +1,34 @@
-  
-CREATE OR ALTER PROCEDURE [PWST].[SADS_Clientes_TablaVolumen]  
-    @Cliente VARCHAR(300),  
-    @Inicio INT,  
-    @Fin INT,  
-    @Ainicio INT,  
-    @Afin INT,  
-    @FamiliasSeleccionadas VARCHAR(MAX) = NULL  
-AS  
-BEGIN  
-  
-    SET NOCOUNT ON;  
+CREATE OR ALTER PROCEDURE [PWST].[SADS_Clientes_TablaVolumen]
+    @Cliente VARCHAR(300),
+    @Inicio INT,
+    @Fin INT,
+    @Ainicio INT,
+    @Afin INT,
+    @FamiliasSeleccionadas VARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @CruzaAnio BIT =
+        CASE
+            WHEN @Inicio < 1
+            AND @Ainicio < @Afin
+            THEN 1
+            ELSE 0
+        END;
+
+    DECLARE @SemanasAnioInicio INT =
+        DATEPART(
+            ISO_WEEK,
+            DATEFROMPARTS(@Ainicio, 12, 28)
+        );
+
+    DECLARE @InicioAjustado INT =
+        CASE
+            WHEN @CruzaAnio = 1
+            THEN @SemanasAnioInicio + @Inicio
+            ELSE @Inicio
+        END;
   
     --Tabla de familias  
     DECLARE @Familias TABLE ( Familia VARCHAR(100), Orden INT)  
@@ -61,15 +80,46 @@ BEGIN
     END  
   
     --Declareacion de las semanas  
-    CREATE TABLE #Semanas (Semana INT)  
-  
-    DECLARE @Semana INT = @Inicio  
-  
-    WHILE @Semana <= @Fin  
-    BEGIN  
-        INSERT INTO #Semanas (Semana) VALUES (@Semana)  
-        SET @Semana = @Semana + 1  
-    END  
+    CREATE TABLE #Semanas (Semana INT);
+
+    DECLARE @Semana INT;
+
+    IF @CruzaAnio = 1
+    BEGIN
+        -- Semanas restantes del año anterior
+        SET @Semana = @InicioAjustado;
+
+        WHILE @Semana <= @SemanasAnioInicio
+        BEGIN
+            INSERT INTO #Semanas (Semana)
+            VALUES (@Semana);
+
+            SET @Semana = @Semana + 1;
+        END;
+
+        -- Semanas iniciales del nuevo año
+        SET @Semana = 1;
+
+        WHILE @Semana <= @Fin
+        BEGIN
+            INSERT INTO #Semanas (Semana)
+            VALUES (@Semana);
+
+            SET @Semana = @Semana + 1;
+        END;
+    END
+    ELSE
+    BEGIN
+        SET @Semana = @Inicio;
+
+        WHILE @Semana <= @Fin
+        BEGIN
+            INSERT INTO #Semanas (Semana)
+            VALUES (@Semana);
+
+            SET @Semana = @Semana + 1;
+        END;
+    END;
   
     --Consulta SQL dinamica en base a las familias  
     DECLARE @Columnas NVARCHAR(MAX)  
@@ -125,9 +175,35 @@ BEGIN
     INNER JOIN PWST.CATALOGOS_Articulos A
         ON VD.Codigo_Articulo = A.Codigo
     WHERE VD.Cliente = @Cliente
-    AND DATEPART(ISO_WEEK, VD.Fecha) BETWEEN @Inicio AND @Fin
+    AND (
+        (
+            @CruzaAnio = 0
+            AND DATEPART(ISO_WEEK, VD.Fecha)
+                BETWEEN @Inicio AND @Fin
+            AND YEAR(VD.Fecha)
+                BETWEEN @AInicio AND @AFin
+        )
+        OR
+        (
+            @CruzaAnio = 1
+            AND
+            (
+                (
+                    YEAR(VD.Fecha) = @AInicio
+                    AND DATEPART(ISO_WEEK, VD.Fecha)
+                        BETWEEN @InicioAjustado
+                        AND @SemanasAnioInicio
+                )
+                OR
+                (
+                    YEAR(VD.Fecha) = @AFin
+                    AND DATEPART(ISO_WEEK, VD.Fecha)
+                        BETWEEN 1 AND @Fin
+                )
+            )
+        )
+    )
     AND A.Familia IN (' + @ListaFamilias + ')
-    AND YEAR(VD.Fecha) BETWEEN @AInicio AND @AFin
     GROUP BY
         DATEPART(ISO_WEEK, VD.Fecha),
         A.Familia
@@ -152,7 +228,15 @@ BEGIN
     SELECT CASE WHEN GROUPING(Semana) = 1 THEN ''TOTAL'' ELSE CAST(Semana AS VARCHAR(20)) END AS Sem, ' + @ColumnasTotal + '  
     FROM #Resultado  
     GROUP BY ROLLUP(Semana)  
-    ORDER BY GROUPING(Semana), Semana  
+    ORDER BY
+        GROUPING(Semana),
+        CASE
+            WHEN @CruzaAnio = 1
+            AND Semana <= @Fin
+            THEN 1
+            ELSE 0
+        END,
+        Semana; 
   
   
     --Borrado de tablas temporales  
@@ -162,19 +246,25 @@ BEGIN
       
     '  
   
-    EXEC sp_executesql  
-        @SQL,  
-        N'@Cliente VARCHAR(300),  
-          @Inicio INT,  
-          @Fin INT,  
-          @AInicio INT,  
-          @AFin INT',  
-  
-        @Cliente = @Cliente,  
-        @Inicio = @Inicio,  
-        @Fin = @Fin,  
-        @AInicio = @Ainicio,  
-        @AFin = @Afin  
+    EXEC sp_executesql
+        @SQL,
+        N'@Cliente VARCHAR(300),
+        @Inicio INT,
+        @Fin INT,
+        @AInicio INT,
+        @AFin INT,
+        @CruzaAnio BIT,
+        @InicioAjustado INT,
+        @SemanasAnioInicio INT',
+
+        @Cliente = @Cliente,
+        @Inicio = @Inicio,
+        @Fin = @Fin,
+        @AInicio = @Ainicio,
+        @AFin = @Afin,
+        @CruzaAnio = @CruzaAnio,
+        @InicioAjustado = @InicioAjustado,
+        @SemanasAnioInicio = @SemanasAnioInicio;
   
     DROP TABLE #Semanas  
   

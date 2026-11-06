@@ -8,6 +8,55 @@ CREATE OR ALTER PROCEDURE [PWST].[SADS_Clientes_TablaIndicadoresResumen]
 AS  
   
 SET nocount on  
+
+DECLARE @FechaInicio DATE;
+DECLARE @FechaFin DATE;
+DECLARE @DiferenciaSemanas INT;
+
+SET @FechaFin = DATEADD(
+    DAY,
+    (@Fin - 1) * 7 + 6,
+    DATEADD(
+        DAY,
+        -(DATEDIFF(DAY, '19000101', DATEFROMPARTS(@Afin, 1, 4)) % 7) - 1,
+        DATEFROMPARTS(@Afin, 1, 4)
+    )
+);
+
+IF @Ainicio < @Afin
+   AND @Inicio < 0
+   AND @Fin > 0
+BEGIN
+    SET @FechaInicio = DATEADD(
+        WEEK,
+        @Inicio,
+        DATEADD(
+            DAY,
+            -(
+                DATEDIFF(
+                    DAY,
+                    '19000101',
+                    DATEFROMPARTS(@Ainicio, 12, 28)
+                ) % 7
+            ),
+            DATEFROMPARTS(@Ainicio, 12, 28)
+        )
+    );
+END
+ELSE
+BEGIN
+    SET @DiferenciaSemanas = @Fin - @Inicio;
+
+    SET @FechaInicio = DATEADD(
+        DAY,
+        -5,
+        DATEADD(
+            WEEK,
+            -@DiferenciaSemanas,
+            @FechaFin
+        )
+    );
+END;
   
 CREATE TABLE #Indicadores (Compras FLOAT, ITO FLOAT, ASSORMENT FLOAT, ME FLOAT, COMBOS FLOAT, TIEMPO_VISITA FLOAT, APERTURA FLOAT, CPWME FLOAT)  
   
@@ -27,10 +76,7 @@ SELECT
     [PWST].[DiaSemana](Fecha) AS DiaVisita  
 FROM PWST.POWERSTREET_PDV_PorAgencia  
 WHERE Cliente = @Cliente  
-AND  DATEPART(ISO_WEEK, Fecha)   
-BETWEEN @Inicio  
-AND  @Fin  
-AND  Fecha > DATEFROMPARTS(YEAR(GETDATE()), 1, 1)  
+AND Fecha BETWEEN @FechaInicio AND @FechaFin
 
 DECLARE @Familias TABLE(Familia VARCHAR(100));
 INSERT INTO @Familias(Familia)
@@ -46,15 +92,15 @@ VALUES
   
 -----------------------  
 ------  COMPRAS -------  
-CREATE TABLE #Tabla (Semana INT)  
-DECLARE @I INT = @Inicio  
+CREATE TABLE #Tabla (SemanaInicio DATE);
+DECLARE @SemanaActual DATE = @FechaInicio;
   
 DECLARE @Peso_Compras FLOAT = 0.25  
    
- WHILE @I < (@Fin + 1)  
+ WHILE @SemanaActual <= @FechaFin
  BEGIN  
-  INSERT INTO #Tabla SELECT @I  
-  SET @I = @I + 1  
+  INSERT INTO #Tabla VALUES (@SemanaActual);
+  SET @SemanaActual = DATEADD(WEEK, 1, @SemanaActual);
  END  
   
 DECLARE @Compras FLOAT  = 0  
@@ -64,15 +110,22 @@ DECLARE @ITO FLOAT = 0
 SELECT @Venta = SUM(IIF(G.Cant > 0, 1, 0))  
     FROM #Tabla T  
     LEFT JOIN (SELECT   
-         DATEPART(ISO_WEEK, Fecha) AS SemanaISO,      
+         DATEADD(
+             DAY,
+             -(DATEDIFF(DAY, '19000101', Fecha) % 7),
+             Fecha
+         ) AS SemanaInicio,
          SUM(Cantidad) AS Cant  
         FROM [PWST].[POWERSTREET_Venta_Diaria]  
         WHERE Cliente = @Cliente  
-        AND DATEPART(ISO_WEEK, Fecha) BETWEEN @Inicio AND @Fin  
-        AND  FECHA > DATEFROMPARTS(YEAR(GETDATE()), 1, 1)  
-        GROUP BY DATEPART(ISO_WEEK, Fecha)  
+        AND Fecha BETWEEN @FechaInicio AND @FechaFin
+        GROUP BY DATEADD(
+            DAY,
+            -(DATEDIFF(DAY, '19000101', Fecha) % 7),
+            Fecha
+        )
     ) G  
-    ON  T.Semana= G.SemanaISO  
+    ON T.SemanaInicio = G.SemanaInicio
   
   
 --SELECT @Venta = SUM(IIF(G.Cant > 0, 1, 0))  
@@ -94,7 +147,11 @@ SELECT @Venta = SUM(IIF(G.Cant > 0, 1, 0))
 --    ON  T.Semana= D.Semana  
        
   
-SET @Compras = (ISNULL(@Venta,0) / (@Fin -@Inicio + 1) * @Peso_Compras) * 100  
+SET @Compras = (
+    ISNULL(@Venta, 0)
+    / NULLIF((SELECT COUNT(*) FROM #Tabla), 0)
+    * @Peso_Compras
+) * 100;
   
 -----------------------  
 --------  ITO ---------  
@@ -162,12 +219,11 @@ FROM (
         INNER JOIN [PWST].[CATALOGOS_Articulos] A
             ON V.Codigo_Articulo = A.Codigo 
         WHERE Cliente = @Cliente  
-        AND DATEPART(ISO_WEEK, Fecha) BETWEEN @Inicio AND @Fin  
+        AND Fecha BETWEEN @FechaInicio AND @FechaFin
         AND Familia IN (  
             SELECT Familia
             FROM @Familias         
         )  
-  AND Fecha > DATEFROMPARTS(YEAR(GETDATE()), 1, 1)  
   GROUP BY Familia  
   HAVING SUM(Cantidad) >= @CantCajetillas) A  
   )  
@@ -200,10 +256,7 @@ SET @ME = (
     WHERE 1=1  
     AND  Cliente = @Cliente  
     AND  Familia IN ('ICE MIX', 'BLOSSOM MIX', 'SUMMER MIX', 'RUBY MIX', 'BARONET')  
-    AND  DATEPART(ISO_WEEK, Fecha)   
-    BETWEEN @inicio  
-    AND  @Fin  
-    AND  FECHA > DATEFROMPARTS(YEAR(GETDATE()), 1, 1)  
+    AND Fecha BETWEEN @FechaInicio AND @FechaFin
     GROUP BY Familia ) ME  
    )  
   
@@ -218,9 +271,7 @@ SELECT IIF(SUM(ISNULL(C.Cantidad, 0)) >= 1, 1, 0) * @Peso_Combo * 100
 FROM  ( SELECT ISNULL(Cantidad_Combos,0) as Cantidad  
   FROM PWST.POWERSTREET_Combos_Por_Cliente  
   WHERE Codigo_Cliente = @Cliente  
-  AND  DATEPART(ISO_WEEK, Fecha)  
-  BETWEEN @inicio  
-  AND  @Fin  
+  AND Fecha BETWEEN @FechaInicio AND @FechaFin
   ) C  
   )  
   

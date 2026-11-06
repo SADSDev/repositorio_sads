@@ -5,44 +5,63 @@ CREATE OR ALTER PROCEDURE [PWST].[SADS_Clientes_TablaPedidos]
 @Ainicio INT,  
 @Afin INT  
 
-AS  
-SET NOCOUNT ON;  
+AS 
+BEGIN
+SET NOCOUNT ON;
+    
+    DECLARE @FechaInicio DATE
+    DECLARE @FechaFin DATE
+    DECLARE @DiferenciaSemanas INT
 
-CREATE TABLE #Pedidos
-(
-    Fecha DATE,
-    Numero VARCHAR(50),
-    Estatus VARCHAR(50),
-    [Cantidad Orden] FLOAT,
-    [Cantidad Entrega] FLOAT,
-    [Entregados Orden Original] FLOAT,
-    Fullfillment VARCHAR(20)
-);
-INSERT INTO #Pedidos
+    SET @FechaFin = DATEADD(
+        DAY,
+        (@Fin - 1) * 7 + 6,
+        DATEADD(
+            DAY,
+            -(DATEDIFF(DAY, '19000101', DATEFROMPARTS(@Afin, 1, 4)) % 7)-1,
+            DATEFROMPARTS(@Afin, 1, 4)
+        )
+    );
+    
+    IF @Ainicio < @Afin AND @Inicio < 0 AND @Fin > 0
+    BEGIN
+       SET @FechaInicio = DATEADD(
+            WEEK,
+            @Inicio,
+            DATEADD(
+                DAY,
+                -(DATEDIFF(
+                    DAY,
+                    '19000101',
+                    DATEFROMPARTS(@Ainicio, 12, 28)
+                ) % 7),
+                DATEFROMPARTS(@Ainicio, 12, 28)
+            )
+        );
+    END
+    ELSE
+    BEGIN 
+        SET @DiferenciaSemanas= @Fin-@Inicio
+        SET @FechaInicio =DATEADD(DAY, -5,DATEADD(
+                WEEK, -@DiferenciaSemanas, @FechaFin
+            )
+        )
+    END
 
-SELECT
-    Fecha,
-    Orden,
-    Status_Orden,
-    Cantidad_Orden,
-    ISNULL(Cantidad_Entrega, 0),
-    ROUND(Cantidad_Orden * (Fullfillment / 100.0), 2),
-    CONCAT(CAST(ROUND(Fullfillment, 2) AS DECIMAL(10,2)), '%')
-FROM PWST.POWERSTREET_Fullfillment_Pedidos_PMM
-WHERE Cliente = @Cliente
-  AND DATEPART(ISO_WEEK, Fecha) BETWEEN @Inicio AND @Fin
-  AND YEAR(Fecha) BETWEEN @Ainicio AND @Afin;
-
-SELECT
-    FORMAT(Fecha, 'dd-MM-yyyy') AS Fecha,
-    Numero AS Orden,
-    Estatus,
-    [Cantidad Orden],
-    [Cantidad Entrega],
-    [Entregados Orden Original],
-    Fullfillment
-FROM #Pedidos
-ORDER BY
-    CONVERT(DATETIME, Fecha) ASC;
-
-DROP TABLE #Pedidos;
+    SELECT
+        FORMAT(P.Fecha, 'dd-MM-yyyy') AS Fecha,
+        P.Orden AS Orden,
+        P.Status_Orden AS Estatus,
+        CAST(P.Cantidad_Orden AS DECIMAL(10,3))  AS [Cantidad Orden],
+        ISNULL(CAST(P.Cantidad_Entrega AS DECIMAL(10,3)), 0) AS [Cantidad Entrega],
+        CAST(ROUND(P.Cantidad_Orden * (P.Fullfillment / 100.0), 3) AS DECIMAL(10,3))
+            AS [Entregados Orden Original],
+        CONCAT(
+            CAST(ROUND(P.Fullfillment, 2) AS DECIMAL(10,2)),
+            '%'
+        ) AS Fullfillment
+    FROM PWST.POWERSTREET_Fullfillment_Pedidos_PMM P
+    WHERE Cliente = @Cliente
+    AND Fecha BETWEEN @FechaInicio AND @FechaFin 
+    ORDER BY P.Fecha ASC;
+END
