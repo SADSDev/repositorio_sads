@@ -13,7 +13,7 @@ import pandas as pd
 #-----------------------------------------------------
 #IMPORTS
 #-----------------------------------------------------
-from fastAPI.Modelos.Core.exceptions import ErrorDatosModelo
+from Core.exceptions import ErrorDatosModelo
 
 #-----------------------------------------------------
 # PROCESO DE VALIDACION DE DF´S

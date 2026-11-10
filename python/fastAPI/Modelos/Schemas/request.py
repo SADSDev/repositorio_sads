@@ -6,8 +6,8 @@ from pydantic import BaseModel
 #===============================================
 # IMPORTS 
 #===============================================
-from fastAPI.Modelos.MAM.Schemas.request import MAMRequest
-from fastAPI.Modelos.MART.Schemas.request import MARTRequest
+from MAM.Schemas.request import MAMRequest
+from MART.Schemas.request import MARTRequest
 
 
 #===============================================

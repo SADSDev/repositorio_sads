@@ -12,34 +12,34 @@ import pandas as pd
 #---------------------------------------------
 # IMPORTS
 #---------------------------------------------
-from fastAPI.Modelos.Core.validarDataFrame import validar_dataframe
+from Core.validarDataFrame import validar_dataframe
 
-from fastAPI.Modelos.MAM.Config.parametros import (
+from MAM.Config.parametros import (
     obtener_ponderaciones,
     obtener_parametros_ajustables,
     obtener_parametros
 )
-from fastAPI.Modelos.MAM.datos.SQL import (
+from MAM.datos.SQL import (
     obtener_tabla_ventas,
     obtener_tabla_ux,
     obtener_vigencias_me
 )
-from fastAPI.Modelos.MAM.datos.clientesActivos import clientes_activos
-from fastAPI.Modelos.MAM.datos.eficienciaVentaMes import (
+from MAM.datos.clientesActivos import clientes_activos
+from MAM.datos.eficienciaVentaMes import (
     clientes_unicos_por_mes,
     eficiencia_por_mes,
     eficiencia_ponderada
 )
-from fastAPI.Modelos.MAM.datos.ticketEsperado import (
+from MAM.datos.ticketEsperado import (
     venta_por_cliente,
     ticket_esperado
 )
-from fastAPI.Modelos.MAM.datos.frecuenciaRecompraEsperada import (
+from MAM.datos.frecuenciaRecompraEsperada import (
     tickets_por_ruta_mes,
     frecuencia_por_mes,
     frecuencia_ponderada
 )
-from fastAPI.Modelos.MAM.datos.penetracionME import (
+from MAM.datos.penetracionME import (
     venta_marca_mes_cliente,
     adopcion_marca_mes_cliente,
     penetracion_marca_mes_cliente,
@@ -49,10 +49,10 @@ from fastAPI.Modelos.MAM.datos.penetracionME import (
     ventaprom_prom_mes,
     ventaprom_ponderada
 )
-from fastAPI.Modelos.MAM.procesos.compradoresEsperados import compradores_esperados
-from fastAPI.Modelos.MAM.procesos.volumenEsperado import volumen_esperado
-from fastAPI.Modelos.MAM.procesos.capacidadBase import capacidad_base
-from fastAPI.Modelos.MAM.procesos.volumenMEEsperado import volumen_me_esperado
+from MAM.procesos.compradoresEsperados import compradores_esperados
+from MAM.procesos.volumenEsperado import volumen_esperado
+from MAM.procesos.capacidadBase import capacidad_base
+from MAM.procesos.volumenMEEsperado import volumen_me_esperado
 
 #-----------------------------------------------------
 # PROCESO DE DATOS DEL MODELO

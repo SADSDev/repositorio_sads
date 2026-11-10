@@ -11,9 +11,9 @@ import pandas as pd
 #-----------------------------------
 # IMPORTS
 #-----------------------------------
-from fastAPI.Modelos.MAM.procesos.procesoDatosMAM import obtener_datos_modelo
-from fastAPI.Modelos.MAM.Schemas.request import MAMRequest
-from fastAPI.Modelos.Core.redondear import redondear_conservando_total
+from MAM.procesos.procesoDatosMAM import obtener_datos_modelo
+from MAM.Schemas.request import MAMRequest
+from Core.redondear import redondear_conservando_total
 
 #-----------------------------------
 # OBTENCION DE DATOS DEL MODELO
@@ -25,19 +25,9 @@ def modeloMAM(request: MAMRequest):
         agencia=request.agencia
     )
 
-    df_venta = resultados["df_venta"]
-    df_vigencias_me = resultados["df_vigencias_me"]
-    df_compradores_esperados = resultados["df_compradores_esperados"]
-    df_volumen_esperado = resultados["df_volumen_esperado"]
+
     df_capacidad_base = resultados["df_capacidad_base"]
-    df_venta_marca_mes_cliente = resultados["df_venta_marca_mes_cliente"]
-    df_adopcion_marca_mes_cliente = resultados["df_adopcion_marca_mes_cliente"]
-    df_penetracion_marca_mes_cliente = resultados["df_penetracion_marca_mes_cliente"]
-    df_penetracionprom_mes = resultados["df_penetracionprom_mes"]
-    df_penetracion_ponderada = resultados["df_penetracion_ponderada"]
-    df_ventaprom_marca_mes = resultados["df_ventaprom_marca_mes"]
-    df_ventaprom_prom_mes = resultados["df_ventaprom_prom_mes"]
-    df_ventaprom_ponderada = resultados["df_ventaprom_ponderada"]
+
     df_volumen_me_esperado = resultados["df_volumen_me_esperado"]
 
 

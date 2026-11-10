@@ -10,9 +10,9 @@ import pandas as pd
 #----------------------------------------------------
 # IMPORTS
 #----------------------------------------------------
-from fastAPI.Modelos.MAM.datos.clientesActivos import clientes_activos
-from fastAPI.Modelos.MAM.datos.SQL import obtener_vigencias_me
-from fastAPI.Modelos.MAM.Config.parametros import obtener_ponderaciones
+from MAM.datos.clientesActivos import clientes_activos
+from MAM.datos.SQL import obtener_vigencias_me
+from MAM.Config.parametros import obtener_ponderaciones
 
 #-----------------------------------------------------
 # OBTENCION DE PENETRACIONES DE VENTA DE ME
