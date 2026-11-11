@@ -52,7 +52,7 @@ def obtener_tabla_ventas(agencia: int, fecha_inicio: date, fecha_fin: date):
                         WHEN B.Cliente IS NOT NULL THEN 1
                         ELSE 0
                     END AS existe_en_B
-                FROM POWERSTREET_Venta_Diaria A
+                FROM PWST.POWERSTREET_Venta_Diaria A
                 LEFT JOIN PWST.CATALOGOS_Clientes_GTP B
                     ON A.Cliente = B.Cliente
                 LEFT JOIN articulos C
