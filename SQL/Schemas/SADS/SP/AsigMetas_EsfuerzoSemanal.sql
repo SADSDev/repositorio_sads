@@ -8,6 +8,25 @@ AS
 BEGIN   
   
     SET NOCOUNT ON;  
+
+    DECLARE @MesInicio DATE;
+    DECLARE @PrimerDiaOperacion DATE;
+    DECLARE @PrimerLunes DATE;
+
+    SET @MesInicio = DATEFROMPARTS(@anio, @mes, 1);
+
+    SET @PrimerDiaOperacion = CASE
+        WHEN DATEDIFF(DAY, '19000101', @MesInicio) % 7 = 6
+            THEN DATEADD(DAY, 1, @MesInicio)
+        ELSE @MesInicio
+    END;
+
+
+    SET @PrimerLunes = DATEADD(
+        DAY,
+        -(DATEDIFF(DAY, '19000101', @PrimerDiaOperacion) % 7),
+        @PrimerDiaOperacion
+    );
   
     -----------------------------------------------------------  
     -- METAS semanales  
@@ -15,24 +34,7 @@ BEGIN
   
     SELECT  
         M.NUR,  
-        (  
-            DAY(M.Fecha)   
-            +   
-            (  
-                (  
-                    DATEPART(  
-                        WEEKDAY,  
-                        DATEFROMPARTS(  
-                            YEAR(M.Fecha),  
-                            MONTH(M.Fecha),  
-                            1  
-                        )  
-                    )  
-                    + @@DATEFIRST - 2  
-                ) % 7  
-            )  
-            - 1  
-        ) / 7 + 1 AS Semana_Mes,  
+        DATEDIFF(DAY, @PrimerLunes, M.Fecha) / 7 + 1 AS Semana_Mes,
         M.Valor_Meta AS Meta_Volumen  
     INTO #metas_semanales  
     FROM PWST.SADS_SegOper_Metas AS M  
@@ -41,9 +43,9 @@ BEGIN
     WHERE  
         M.Indicador = 'VOLUMEN'  
         AND A.Agencia = @agencia  
-        AND M.Fecha BETWEEN  
-            DATEFROMPARTS(@anio, @mes, 1)  
-            AND EOMONTH(DATEFROMPARTS(@anio, @mes, 1));  
+        AND M.Fecha BETWEEN
+            @MesInicio
+            AND EOMONTH(@MesInicio);
   
     -------------------------------------------------------  
     -- RESULT SET 2  

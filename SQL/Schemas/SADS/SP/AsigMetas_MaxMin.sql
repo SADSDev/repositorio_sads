@@ -11,6 +11,8 @@ BEGIN
 
     DECLARE @MesInicio DATE;
     DECLARE @MesSiguiente DATE;
+    DECLARE @PrimerDiaOperacion DATE;
+    DECLARE @PrimerLunes DATE;
 
     SET @MesInicio = DATEADD(
         MONTH,
@@ -19,6 +21,22 @@ BEGIN
     );
 
     SET @MesSiguiente = DATEADD(MONTH, 1, @MesInicio);
+
+    -- El domingo no es día operativo. Si el mes inicia en domingo,
+    -- la primera semana operativa comienza el lunes siguiente.
+    SET @PrimerDiaOperacion = CASE
+        WHEN DATEDIFF(DAY, '19000101', @MesInicio) % 7 = 6
+            THEN DATEADD(DAY, 1, @MesInicio)
+        ELSE @MesInicio
+    END;
+
+    -- Ancla la semana en el lunes que contiene el primer día operativo,
+    -- conservando la primera semana parcial del mes.
+    SET @PrimerLunes = DATEADD(
+        DAY,
+        -(DATEDIFF(DAY, '19000101', @PrimerDiaOperacion) % 7),
+        @PrimerDiaOperacion
+    );
 
     IF NOT EXISTS
     (
@@ -35,24 +53,7 @@ BEGIN
 
         SELECT
             M.NUR,
-            (
-                DAY(M.Fecha)
-                +
-                (
-                    (
-                        DATEPART(
-                            WEEKDAY,
-                            DATEADD(
-                                MONTH,
-                                DATEDIFF(MONTH, 0, M.Fecha),
-                                0
-                            )
-                        )
-                        + @@DATEFIRST - 2
-                    ) % 7
-                )
-                - 1
-            ) / 7 + 1 AS Semana_Mes
+            DATEDIFF(DAY, @PrimerLunes, M.Fecha) / 7 + 1 AS Semana_Mes
         INTO #metas_semanales
         FROM PWST.SADS_SegOper_Metas AS M
         INNER JOIN PWST.CATALOGOS_Agencias AS A
@@ -65,20 +66,7 @@ BEGIN
             AND A.Agencia = @agencia
         GROUP BY
             M.NUR,
-            (
-                DAY(M.Fecha)
-                +
-                (
-                    (
-                        DATEPART(
-                            WEEKDAY,
-                            DATEADD(MONTH, DATEDIFF(MONTH, 0, M.Fecha), 0)
-                        )
-                        + @@DATEFIRST - 2
-                    ) % 7
-                )
-                - 1
-            ) / 7 + 1;
+            DATEDIFF(DAY, @PrimerLunes, M.Fecha) / 7 + 1
 
         -----------------------------------------------------------
         -- MAX / MIN ERROR
@@ -89,24 +77,7 @@ BEGIN
             SELECT
                 S.NUR,
                 S.Error,
-                (
-                    DAY(S.Fecha)
-                    +
-                    (
-                        (
-                            DATEPART(
-                                WEEKDAY,
-                                DATEADD(
-                                    MONTH,
-                                    DATEDIFF(MONTH, 0, S.Fecha),
-                                    0
-                                )
-                            )
-                            + @@DATEFIRST - 2
-                        ) % 7
-                    )
-                    - 1
-                ) / 7 + 1 AS Semana_Mes
+                DATEDIFF(DAY, @PrimerLunes, S.Fecha) / 7 + 1 AS Semana_Mes
             FROM PWST.ANALYTICS_SimulacionesVentas AS S
             INNER JOIN
             (
@@ -114,9 +85,7 @@ BEGIN
                 FROM #metas_semanales
             ) N
                 ON N.NUR = S.NUR
-            WHERE
-                S.Fecha >= @MesInicio
-                AND S.Fecha < @MesSiguiente
+
         ),
         Ordenadas AS
         (
@@ -265,8 +234,7 @@ BEGIN
             PMin AS Minimo,
             PMax AS Maximo
         FROM PWST.ANALYTICS_PercentilesVentasSemanales
-        WHERE YEAR(Mes) = @anio
-          AND MONTH(Mes) = @mes
+        WHERE Mes = @MesInicio
           AND Agencia = @agencia
         ORDER BY
             NUR,
