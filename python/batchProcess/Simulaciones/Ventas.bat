@@ -10,4 +10,4 @@ for /d %%D in (*venv*) do (
 :venv_activado
 python Ventas.py
 
-pause
+exit
