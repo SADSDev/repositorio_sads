@@ -15,6 +15,7 @@ dist/
 venv/
 .venv_fastAPI
 .venv_simulaciones
+.venv_batchProcess
 
 # Variables de entorno
 .env
