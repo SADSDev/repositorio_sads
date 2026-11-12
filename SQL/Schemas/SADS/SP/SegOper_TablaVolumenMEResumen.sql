@@ -102,7 +102,7 @@ BEGIN
                     (
                         SELECT DISTINCT
                             UPPER(LTRIM(RTRIM(S.value))) AS Marca
-                        FROM STRING_SPLIT(M.Indicador, '+') AS S
+                        FROM (SELECT LTRIM(RTRIM(N.X.value('.', 'VARCHAR(100)'))) AS value FROM (SELECT CAST('<x><v>' + REPLACE(ISNULL(M.Indicador, ''), '+', '</v><v>') + '</v></x>' AS XML) AS XmlData) AS D CROSS APPLY D.XmlData.nodes('/x/v') AS N(X)) AS S
                         WHERE LTRIM(RTRIM(S.value)) <> ''
                     ) AS X
                     ORDER BY X.Marca
@@ -131,7 +131,7 @@ BEGIN
             @agencia IS NULL
             OR A.Agencia IN (
                 SELECT TRY_CAST(value AS INT)
-                FROM STRING_SPLIT(@agencia, ',')
+                FROM (SELECT N.X.value('.', 'VARCHAR(200)') AS value FROM (SELECT CAST('<x><v>' + REPLACE(ISNULL(@agencia, ''), CHAR(44), '</v><v>') + '</v></x>' AS XML) AS XmlData) AS D CROSS APPLY D.XmlData.nodes('/x/v') AS N(X)) AS AgenciaSplit
             )
         );
 
@@ -235,7 +235,7 @@ BEGIN
                         '','' + @agencia + '',''
                     ) > 0
                 )
-                AND (@zona IS NULL OR EXISTS (SELECT 1 FROM STRING_SPLIT(@zona, CHAR(44)) Z WHERE LTRIM(RTRIM(Z.value)) = V.Grupo))
+                AND (@zona IS NULL OR EXISTS (SELECT 1 FROM (SELECT LTRIM(RTRIM(N.X.value(''.'', ''VARCHAR(200)''))) AS value FROM (SELECT CAST(''<x><v>'' + REPLACE(ISNULL(@zona, ''''), CHAR(44), ''</v><v>'') + ''</v></x>'' AS XML) AS XmlData) AS D CROSS APPLY D.XmlData.nodes(''/x/v'') AS N(X)) AS Z WHERE LTRIM(RTRIM(Z.value)) = V.Grupo))
                 AND
                 (
                     @ruta IS NULL
@@ -246,7 +246,7 @@ BEGIN
                             PATINDEX(''%[A-Z]%'', V.NUR) + 1,
                             LEN(V.NUR)
                         )
-                    ) IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@ruta, CHAR(44)))
+                    ) IN (SELECT LTRIM(RTRIM(value)) FROM (SELECT LTRIM(RTRIM(N.X.value(''.'', ''VARCHAR(200)''))) AS value FROM (SELECT CAST(''<x><v>'' + REPLACE(ISNULL(@ruta, ''''), CHAR(44), ''</v><v>'') + ''</v></x>'' AS XML) AS XmlData) AS D CROSS APPLY D.XmlData.nodes(''/x/v'') AS N(X)) AS RutaSplit)
                 )
         ),
 
@@ -311,7 +311,7 @@ BEGIN
                 AND EXISTS
                 (
                     SELECT 1
-                    FROM STRING_SPLIT(M.Indicador, ''+'') S
+                    FROM (SELECT LTRIM(RTRIM(N.X.value(''.'', ''VARCHAR(100)''))) AS value FROM (SELECT CAST(''<x><v>'' + REPLACE(ISNULL(M.Indicador, ''''), ''+'', ''</v><v>'') + ''</v></x>'' AS XML) AS XmlData) AS D CROSS APPLY D.XmlData.nodes(''/x/v'') AS N(X)) AS S
                     WHERE LTRIM(RTRIM(S.value)) = LTRIM(RTRIM(A.Familia))
                 )
             GROUP BY

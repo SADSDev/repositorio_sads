@@ -82,7 +82,7 @@ BEGIN
                 OR EXISTS
                 (
                     SELECT 1
-                    FROM STRING_SPLIT(@zona, CHAR(44)) Z
+                    FROM (SELECT LTRIM(RTRIM(N.X.value('.', 'VARCHAR(200)'))) AS value FROM (SELECT CAST('<x><v>' + REPLACE(ISNULL(@zona, ''), CHAR(44), '</v><v>') + '</v></x>' AS XML) AS XmlData) AS D CROSS APPLY D.XmlData.nodes('/x/v') AS N(X)) AS Z
                     WHERE LTRIM(RTRIM(Z.value)) = V.Grupo
                 )
             )
@@ -99,7 +99,7 @@ BEGIN
                 ) IN
                 (
                     SELECT LTRIM(RTRIM(value))
-                    FROM STRING_SPLIT(@ruta, CHAR(44))
+                    FROM (SELECT LTRIM(RTRIM(N.X.value('.', 'VARCHAR(200)'))) AS value FROM (SELECT CAST('<x><v>' + REPLACE(ISNULL(@ruta, ''), CHAR(44), '</v><v>') + '</v></x>' AS XML) AS XmlData) AS D CROSS APPLY D.XmlData.nodes('/x/v') AS N(X)) AS RutaSplit
                 )
             )
 
@@ -126,7 +126,7 @@ BEGIN
                 OR EXISTS
                 (
                     SELECT 1
-                    FROM STRING_SPLIT(@zona, CHAR(44)) Z
+                    FROM (SELECT LTRIM(RTRIM(N.X.value('.', 'VARCHAR(200)'))) AS value FROM (SELECT CAST('<x><v>' + REPLACE(ISNULL(@zona, ''), CHAR(44), '</v><v>') + '</v></x>' AS XML) AS XmlData) AS D CROSS APPLY D.XmlData.nodes('/x/v') AS N(X)) AS Z
                     WHERE LTRIM(RTRIM(Z.value)) = V.Grupo
                 )
             )
@@ -143,7 +143,7 @@ BEGIN
                 ) IN
                 (
                     SELECT LTRIM(RTRIM(value))
-                    FROM STRING_SPLIT(@ruta, CHAR(44))
+                    FROM (SELECT LTRIM(RTRIM(N.X.value('.', 'VARCHAR(200)'))) AS value FROM (SELECT CAST('<x><v>' + REPLACE(ISNULL(@ruta, ''), CHAR(44), '</v><v>') + '</v></x>' AS XML) AS XmlData) AS D CROSS APPLY D.XmlData.nodes('/x/v') AS N(X)) AS RutaSplit
                 )
             )
     ),

@@ -87,7 +87,7 @@ BEGIN
                     ',' + @agencia + ','
                 ) > 0
             )
-            AND (@zona IS NULL OR EXISTS (SELECT 1 FROM STRING_SPLIT(@zona, CHAR(44)) Z WHERE LTRIM(RTRIM(Z.value)) = V.Grupo))
+            AND (@zona IS NULL OR EXISTS (SELECT 1 FROM (SELECT LTRIM(RTRIM(N.X.value('.', 'VARCHAR(200)'))) AS value FROM (SELECT CAST('<x><v>' + REPLACE(ISNULL(@zona, ''), CHAR(44), '</v><v>') + '</v></x>' AS XML) AS XmlData) AS D CROSS APPLY D.XmlData.nodes('/x/v') AS N(X)) AS Z WHERE LTRIM(RTRIM(Z.value)) = V.Grupo))
             AND
             (
                 @ruta IS NULL
@@ -98,7 +98,7 @@ BEGIN
                             PATINDEX('%[A-Z]%', V.NUR) + 1,
                             LEN(V.NUR)
                         )
-                    ) IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@ruta, CHAR(44)))
+                    ) IN (SELECT LTRIM(RTRIM(value)) FROM (SELECT LTRIM(RTRIM(N.X.value('.', 'VARCHAR(200)'))) AS value FROM (SELECT CAST('<x><v>' + REPLACE(ISNULL(@ruta, ''), CHAR(44), '</v><v>') + '</v></x>' AS XML) AS XmlData) AS D CROSS APPLY D.XmlData.nodes('/x/v') AS N(X)) AS RutaSplit)
             )
             AND (V.Evaluable=1 OR V.NUR='1125632M29')
     ),
