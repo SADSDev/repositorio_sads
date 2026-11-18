@@ -169,6 +169,9 @@ BEGIN
             AS XML
         );
 
+        ------------------------------------------------
+        -- CTE´s de permisos y resursos a asignar 
+        -----------------------------------------------
         ;WITH Permisos AS
         (
             SELECT
@@ -176,6 +179,7 @@ BEGIN
                 LTRIM(RTRIM(Nodo.Item.value('.', 'VARCHAR(20)'))) AS Valor
             FROM @PermisosXml.nodes('/root/item') Nodo(Item)
         ),
+
         Recursos AS
         (
             SELECT
@@ -183,6 +187,11 @@ BEGIN
                 LTRIM(RTRIM(Nodo.Item.value('.', 'VARCHAR(20)'))) AS Valor
             FROM @RecursosXml.nodes('/root/item') Nodo(Item)
         )
+
+        ------------------------------------------------
+        -- declaración de tabla temporal de permisos
+        -- y recursos a asignar al usuario
+        ----------------------------------------------- 
         SELECT
             CASE
                 WHEN P.Valor <> ''
@@ -203,49 +212,69 @@ BEGIN
         INNER JOIN Recursos R
             ON P.Posicion = R.Posicion;
             
-        
-        INSERT INTO PWST.SEGURIDAD_UsuarioPermisos
-        (
-            UsuarioAplicacionId,
-            PermisoId
-        )
-        SELECT
-            @UsuarioAplicacionId,
-            PermisoId
-        FROM
-        (
-            SELECT RP.PermisoId
+        --------------------------------------------
+        --Insert de permisos y recursos a tablas de SEGURIDAD
+
+        --si @permisos y @recursos se enviaron NULL se le asignaran
+        ---los permisos y recursos default correspondientes al @rolId ingresado
+        --------------------------------------------        
+        -- Insertar permisos
+        IF @permisos IS NULL
+        BEGIN
+            INSERT INTO PWST.SEGURIDAD_UsuarioPermisos
+            (
+                UsuarioAplicacionId,
+                PermisoId
+            )
+            SELECT
+                @UsuarioAplicacionId,
+                RP.PermisoId
             FROM PWST.SEGURIDAD_RolPermisos RP
-            WHERE RP.RolId = @RolId
-
-            UNION
-
-            SELECT PermisoId
+            WHERE RP.RolId = @RolId;
+        END
+        ELSE
+        BEGIN
+            INSERT INTO PWST.SEGURIDAD_UsuarioPermisos
+            (
+                UsuarioAplicacionId,
+                PermisoId
+            )
+            SELECT
+                @UsuarioAplicacionId,
+                PermisoId
             FROM #RecursosPermisos
-            WHERE PermisoId IS NOT NULL
-        ) AS Permisos;
+            WHERE PermisoId IS NOT NULL;
+        END;
 
-        INSERT INTO PWST.SEGURIDAD_UsuarioRecursos
-        (
-            UsuarioAplicacionId,
-            RecursoId
-        )
-        SELECT
-            @UsuarioAplicacionId,
-            RecursoId
-        FROM
-        (
-            SELECT RR.RecursoId
+
+        -- Insertar recursos
+        IF @recursos IS NULL
+        BEGIN
+            INSERT INTO PWST.SEGURIDAD_UsuarioRecursos
+            (
+                UsuarioAplicacionId,
+                RecursoId
+            )
+            SELECT
+                @UsuarioAplicacionId,
+                RR.RecursoId
             FROM PWST.SEGURIDAD_RolRecursos RR
-            WHERE RR.RolId = @RolId
-
-            UNION
-
-            SELECT RecursoId
+            WHERE RR.RolId = @RolId;
+        END
+        ELSE
+        BEGIN
+            INSERT INTO PWST.SEGURIDAD_UsuarioRecursos
+            (
+                UsuarioAplicacionId,
+                RecursoId
+            )
+            SELECT
+                @UsuarioAplicacionId,
+                RecursoId
             FROM #RecursosPermisos
-            WHERE RecursoId IS NOT NULL
-        ) AS Recursos;
-  
+            WHERE RecursoId IS NOT NULL;
+        END;
+ 
   
         -------------------------------------------------------  
         -- Confirmar transacción  
