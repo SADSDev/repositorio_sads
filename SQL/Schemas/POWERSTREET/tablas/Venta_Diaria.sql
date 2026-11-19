@@ -21,3 +21,7 @@ CREATE TABLE [PWST].[POWERSTREET_Venta_Diaria](
 	[Total] [decimal](12, 4) NOT NULL
 ) ON [PRIMARY]
 GO
+
+CREATE NONCLUSTERED INDEX IX_Venta_Diaria_NUR_Fecha
+ON PWST.POWERSTREET_Venta_Diaria (NUR, Fecha)
+INCLUDE (Cliente, Cantidad);
